@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.sparse import lil_matrix
 
 from .packed_bed import PackedBedGeometry, ergun_pressure_drop_Pa, hydraulic_power_W
 
@@ -94,13 +95,16 @@ def bed_energy_J(bed:GasRockBed,state:BedState) -> float:
 
 def advance_bed(
     bed:GasRockBed, state:BedState, *, inlet_K:float, mass_flow_kg_s:float,
-    dt_s:float, relative_tolerance:float=1e-7
+    dt_s:float, relative_tolerance:float=1e-7,
+    use_analytic_sparse_jacobian:bool=True
 ) -> BedStep:
     if (not math.isfinite(inlet_K) or inlet_K<=0 or
         not math.isfinite(mass_flow_kg_s) or mass_flow_kg_s<0 or
         not math.isfinite(dt_s) or dt_s<=0 or
         not (0<relative_tolerance<=1e-3)):
         raise ValueError("invalid bed step conditions")
+    if not isinstance(use_analytic_sparse_jacobian,bool):
+        raise ValueError("analytic Jacobian selector must be boolean")
     if len(state.fluid_temperature_K)!=bed.cells or len(state.solid_temperature_K)!=bed.cells:
         raise ValueError("invalid bed state")
     n=bed.cells
@@ -152,10 +156,34 @@ def advance_bed(
         out[2*n+1]=np.sum(wall)
         return out
 
-    # BDF solves the heat-transfer stiffness without coupling dt to mesh cells.
+    # The right-hand side is LINEAR for each fixed set of boundary values,
+    # properties and mass flow. Its exact sparse Jacobian avoids the repeated
+    # dense numerical differentiation that makes n>=64 meshes expensive.
+    # Keep the independent BDF finite-difference Jacobian as a regression
+    # option; the ODE and integrated heat/energy ledger are unchanged.
+    jac=None
+    if use_analytic_sparse_jacobian:
+        j=lil_matrix((2*n+2,2*n+2),dtype=float)
+        for i in range(n):
+            j[i,i]=-(mcp+conductance_cell)/cf
+            if i>0:
+                j[i,i-1]=mcp/cf
+            j[i,n+i]=conductance_cell/cf
+            j[n+i,i]=conductance_cell/cs
+            neighbours=int(i>0)+int(i<n-1)
+            j[n+i,n+i]=-(conductance_cell+wall_cell+
+                            neighbours*axial_conductance_W_K)/cs
+            if i>0:
+                j[n+i,n+i-1]=axial_conductance_W_K/cs
+            if i<n-1:
+                j[n+i,n+i+1]=axial_conductance_W_K/cs
+            j[2*n+1,n+i]=wall_cell
+        j[2*n,n-1]=-mcp
+        jac=j.tocsc()
+    # Time integration and spatial finite-volume resolution remain separate.
     atol=np.array([1e-6]*(2*n)+[1e-3,1e-3],dtype=float)
     sol=solve_ivp(derivative,(0.0,dt_s),y0,method="BDF",rtol=relative_tolerance,
-                  atol=atol)
+                  atol=atol,jac=jac)
     if not sol.success or not np.all(np.isfinite(sol.y[:,-1])):
         raise RuntimeError(f"bed integrator failure: {sol.message}")
     y=sol.y[:,-1]
