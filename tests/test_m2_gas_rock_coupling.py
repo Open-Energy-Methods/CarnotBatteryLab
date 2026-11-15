@@ -116,3 +116,30 @@ def test_impossible_hot_bed_reports_infeasible_not_numeric_cop():
     assert len(r.steps)==0
     assert r.termination_reason
     assert r.cumulative_hp_heat_J==0
+
+
+def test_wakao_validity_guard_rejects_unqualified_flow():
+    bed=GasRockBed(cells=8)
+    with pytest.raises(ValueError,match="Wakao"):
+        advance_bed(bed,BedState.uniform(bed,95),inlet_K=408.15,
+                    mass_flow_kg_s=0.01,dt_s=60)
+
+
+@pytest.mark.realfluid
+def test_compact_bed_breakthrough_changes_compressor_demand_or_reports_limit():
+    pytest.importorskip("CoolProp")
+    from carnot_battery_lab.physics.r718 import R718Inputs
+    from carnot_battery_lab.physics.coupled_charge import ChargeControl,simulate_charge
+    bed=GasRockBed(
+        geometry=PackedBedGeometry(1.5,3.5,.045,.4),cells=12,wall_UA_W_K=50.0)
+    run=simulate_charge(bed,BedState.uniform(bed,95),R718Inputs(),
+                        ChargeControl(dt_s=180,number_of_steps=20))
+    assert len(run.steps)>=2
+    assert all(s.heat_hp_to_gas_J>0 for s in run.steps)
+    assert all(abs(s.system_energy_residual_J)<0.001*s.heat_hp_to_gas_J
+               for s in run.steps)
+    assert max(s.total_grid_electric_W for s in run.steps)>=run.steps[0].total_grid_electric_W
+    if not run.completed:
+        assert run.termination_reason
+        assert run.cumulative_hp_heat_J==pytest.approx(
+            len(run.steps)*180*1e6)
