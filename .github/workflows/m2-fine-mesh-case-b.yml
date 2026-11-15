@@ -1,0 +1,38 @@
+name: m2-fine-mesh-case-b
+on:
+  push:
+    paths:
+      - 'scripts/study_horizontal_bed_fine_mesh_512.py'
+      - 'scripts/exploratory_forward_horizontal_bed.py'
+      - 'scripts/acquire_horizontal_bed_2024.py'
+      - 'src/carnot_battery_lab/physics/gas_rock_regenerator.py'
+      - 'tests/test_m2_fine_mesh_analytic.py'
+      - '.github/workflows/m2-fine-mesh-case-b.yml'
+  workflow_dispatch:
+jobs:
+  case-b-source-locked-512-grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install reproducible numerical dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Independently verify analytically solvable heat exchange and validation gates
+        run: python -m pytest tests/test_m2_fine_mesh_analytic.py -v
+      - name: Download original 2024 experimental runs and verify Case B SHA-256
+        run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
+      - name: Source-locked Case B spatial refinement on 64/128/256/512 cells
+        run: python scripts/study_horizontal_bed_fine_mesh_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_fine_mesh_512.json
+      - name: Preserve complete numeric evidence even if refinement target not satisfied
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m2-case-B-source-locked-512-mesh-evidence
+          path: |
+            results/external_horizontal_bed/case_B_fine_mesh_512.json
+            results/external_horizontal_bed/provenance.json
+          if-no-files-found: error
+          retention-days: 21
