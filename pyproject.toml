@@ -24,5 +24,6 @@ carnot-lab = "carnot_battery_lab.cli:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
+markers = ["realfluid: tests requiring actual CoolProp water properties and a complete two-stage cycle"]
 testpaths = ["tests"]
 addopts = "-ra"

@@ -120,6 +120,16 @@ The model now includes a real-fluid R718 single/two-stage water-vapour screening
 - Generate a hashed, unvalidated JSON result: python scripts/run_r718_reference.py
 - GitHub Actions physics job installs CoolProp and executes real-fluid regression tests.
 
+## M1/M2 development increments — explicitly not yet scientifically validated
+
+- **M1 evidence and hydraulics:** published R718 impeller *nominal design* points and different-rig *measured maxima* are compared with the hypothetical R718 stage ratios; these reject the available reference-hardware fit, but are not complete compressor maps. Pressurised process/source/interstage liquid line-loss electricity, gearbox/inverter efficiencies and three heat-exchanger quadrature-refinement checks are now available. The example compressor-electric COP **must not** be used as system COP.
+- **M2 charging-only coupling:** the condenser loop is linked to a conservative 1-D, 2-temperature gas/rock packed bed with geometry-based hA, Ergun pressure loss, blower electric energy, BDF transient temperatures, thermal wall loss and a time-averaged outlet-temperature fixed point. The required condensing temperature and compressor work now respond to storage state, and infeasible states terminate visibly. It does **not** yet deliver industrial process heat, match experimentally measured bed curves, contain real compressor maps, or establish cyclic TES round-trip performance.
+- [M1 published compressor/auxiliary/HX methodology](docs/methods/M1_COMPRESSOR_HYDRAULICS_HX_EVIDENCE.md).
+- [M2 coupled charging equations, tests, and exclusions](docs/methods/M2_R718_GAS_ROCK_CHARGE_ONLY.md).
+- Rerun `python scripts/run_m1_reference_evidence.py` and `python scripts/run_m2_coupled_charge.py` with the optional physics dependencies. Machine-readable results are GitHub Actions artifacts, not fabricated precomputed performance figures.
+
+**The published compressor evidence does not support the present high-lift 5:1-per-stage design.** The latter remains a numerical **hypothesis/control** pending a viable multi-stage compressor or alternative natural-fluid/cascade design. No architecture is yet experimentally validated or cost-optimised.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
