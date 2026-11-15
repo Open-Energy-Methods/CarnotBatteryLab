@@ -103,6 +103,14 @@ future real-fluid models. It is **not required** for foundation tests.
 - Unknown parameters are exposed through uncertainty analysis, never
   invented to force a comparison.
 
+## Scientific v1.0 execution programme
+
+The scientific v1.0 target is a **model-based, externally benchmarked H-family research platform**, not a claim of completed experimental validation or an electricity-return Carnot battery. The programme uses predefined architecture and service contracts, separate literature benchmarks, physics and solver convergence, coupled dynamic re-simulation of Pareto candidates, and source/price-year uncertainty studies. All physical v1.0 features remain planned until evidenced by the release matrix.
+
+- [Scientific v1.0 execution programme](docs/V1_SCIENTIFIC_EXECUTION_PROGRAM.md)
+- [Preregistered comparative study matrix and benchmark candidates](docs/V1_STUDY_MATRIX_AND_BENCHMARKS.md)
+- [Verification, validation and scientific v1.0 acceptance protocol](docs/V1_RELEASE_VERIFICATION_PROTOCOL.md)
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
