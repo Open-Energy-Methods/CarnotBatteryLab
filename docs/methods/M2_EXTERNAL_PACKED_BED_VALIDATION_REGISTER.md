@@ -58,7 +58,7 @@ The first GitHub CI execution (unfitted, no optimisation or calibration) gave:
 | Mean absolute error | **28.102 °C** | **19.027 °C** |
 | Numerical bed-energy relative residual maximum | **5.9×10⁻¹²** | **4.3×10⁻¹²** |
 
-The low energy residual is a numerical internal-conservation test, **not evidence of external predictive agreement**. Large discrepancies are retained in the output, not hidden or retuned. The code now also reports the **observed vs model 80°C breakthrough crossing time**, marking missing crossings explicitly as null rather than extrapolating. Plots overlay the measured exhaust channel and exploratory model predictions with warnings.
+The first 80°C outlet crossing is predicted approximately **397 s early in B** and **176 s early in A**; these are source-forced forward-model discrepancies, *not* independent blind-forecast errors. The low energy residual is a numerical internal-conservation test, **not evidence of external predictive agreement**. Large discrepancies are retained in the output, not hidden or retuned. The code now also reports the **observed vs model 80°C breakthrough crossing time**, marking missing crossings explicitly as null rather than extrapolating. Plots overlay the measured exhaust channel and exploratory model predictions with warnings.
 
 These outputs demonstrate a key scientific limitation: a physically conservative one-dimensional model can significantly miss experiments because of uncertain true air-flow cross section, radial gradients, real material heat capacities, sensor transport delay, pressure drop and heat leaks. No V3 physical validation gate has passed.
 
