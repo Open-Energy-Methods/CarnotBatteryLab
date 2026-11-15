@@ -72,10 +72,10 @@ def test_increased_source_outlet_exposes_hot_end_pinch():
         solve_r718(R718Inputs(source_outlet_C=73))
 
 
-def test_reduced_superheat_allows_higher_evaporation_temperature():
-    # Compare *feasible* points only: 65+6 and 68+6 C both below 80-5 C.
-    a=solve_r718(R718Inputs(suction_superheat_K=6))
-    b=solve_r718(R718Inputs(source_outlet_C=73,suction_superheat_K=6))
+def test_reduced_superheat_and_adequate_flow_allow_higher_evaporation_temperature():
+    # Compare both points with adequate source-flow available.
+    a=solve_r718(R718Inputs(suction_superheat_K=6,available_source_flow_kg_s=40))
+    b=solve_r718(R718Inputs(source_outlet_C=73,suction_superheat_K=6,available_source_flow_kg_s=40))
     assert b.low_pressure_Pa>a.low_pressure_Pa
     assert b.COP_heating_electric>a.COP_heating_electric
 
@@ -102,3 +102,8 @@ def test_screening_manifest_frozen_inputs(tmp_path):
     assert len(data['study_manifest']['case_sha256'])==64
     assert data['study_manifest']['case_id']=='industrial-heat-150c-reference'
     assert data['inputs']['source_outlet_C']==70.0
+
+
+def test_hotter_source_return_can_exceed_available_flow():
+    with pytest.raises(InfeasibleCycle,match="source heat capacity insufficient"):
+        solve_r718(R718Inputs(source_outlet_C=73,suction_superheat_K=6))
