@@ -7,6 +7,7 @@ on:
       - 'scripts/acquire_horizontal_bed_2024.py'
       - 'scripts/inspect_horizontal_methods.py'
       - 'scripts/analyze_horizontal_bed_observations.py'
+      - 'scripts/plot_horizontal_bed_observations.py'
       - '.github/workflows/external-benchmark-a1.yml'
   workflow_dispatch:
 jobs:
@@ -47,6 +48,10 @@ jobs:
         run: python scripts/inspect_horizontal_methods.py --input "results/external_horizontal_bed/Electronic Supplementary Information.pdf" --outdir results/external_horizontal_bed
       - name: Calculate measured-only breakthrough and pressure diagnostics
         run: python scripts/analyze_horizontal_bed_observations.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/measured_observations.json
+      - name: Install plotting library for original measurements
+        run: python -m pip install "matplotlib>=3.8"
+      - name: Regenerate all measured thermocouple and native pressure traces
+        run: python scripts/plot_horizontal_bed_observations.py --input-dir results/external_horizontal_bed --output-dir results/external_horizontal_bed/figures
       - name: Archive source bytes and independent case manifest
         if: always()
         uses: actions/upload-artifact@v4
