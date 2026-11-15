@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carnot-battery-lab"
+version = "0.1.0"
+description = "Open, verification-first research platform for industrial HTHP-TES integration and Carnot-battery architectures."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Open Energy Methods Contributors"}]
+dependencies = ["PyYAML>=6.0"]
+classifiers = ["Development Status :: 2 - Pre-Alpha", "Programming Language :: Python :: 3"]
+
+[project.optional-dependencies]
+physics = ["numpy>=1.26", "scipy>=1.11", "CoolProp>=6.6"]
+research = ["numpy>=1.26", "scipy>=1.11", "CoolProp>=6.6", "pandas>=2.0", "matplotlib>=3.8", "pymoo>=0.6", "pyomo>=6.8"]
+test = ["pytest>=8.0"]
+
+[project.scripts]
+carnot-lab = "carnot_battery_lab.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

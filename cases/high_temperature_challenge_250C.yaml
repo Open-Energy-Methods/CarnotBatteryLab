@@ -1,0 +1,16 @@
+# Challenging study envelope. NOT directly chargeable by the legacy 150 C HP.
+case_id: high-temperature-250c-challenge
+service: process_heat
+load_MW_th: 1.0
+source_inlet_C: 80.0
+process_supply_C: 250.0
+process_return_C: 210.0
+ambient_C: 20.0
+useful_storage_duration_h: 6.0
+temporal_resolution_min: 15
+configuration_status: illustrative
+reference_only: true
+notes: >-
+  Research challenge only. Requires a verified natural-fluid high-temperature
+  heat pump, staged heat upgrade, mechanical vapor recompression, or explicit
+  auxiliary heater with all electrical work included. Do not label feasible.

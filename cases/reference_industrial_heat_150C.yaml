@@ -1,0 +1,16 @@
+# ILLUSTRATIVE RESEARCH BOUNDARIES, not a plant model or demonstrated design.
+case_id: industrial-heat-150c-reference
+service: process_heat
+load_MW_th: 1.0
+source_inlet_C: 80.0
+process_supply_C: 150.0
+process_return_C: 110.0
+ambient_C: 20.0
+useful_storage_duration_h: 6.0
+temporal_resolution_min: 15
+configuration_status: illustrative
+reference_only: true
+notes: >-
+  Deliberately generic reference service. Six MWh_th denotes useful process
+  delivery only; inventory, charging hours and working-fluid feasibility
+  require model-based design and separate documentation.
