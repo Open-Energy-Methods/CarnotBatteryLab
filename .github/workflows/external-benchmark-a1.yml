@@ -8,6 +8,7 @@ on:
       - 'scripts/inspect_horizontal_methods.py'
       - 'scripts/analyze_horizontal_bed_observations.py'
       - 'scripts/plot_horizontal_bed_observations.py'
+      - 'scripts/exploratory_forward_horizontal_bed.py'
       - '.github/workflows/external-benchmark-a1.yml'
   workflow_dispatch:
 jobs:
@@ -52,6 +53,10 @@ jobs:
         run: python -m pip install "matplotlib>=3.8"
       - name: Regenerate all measured thermocouple and native pressure traces
         run: python scripts/plot_horizontal_bed_observations.py --input-dir results/external_horizontal_bed --output-dir results/external_horizontal_bed/figures
+      - name: Install numerical dependencies for uncalibrated preliminary forward replay
+        run: python -m pip install -e ".[physics]"
+      - name: Forward-replay source-forced B and untouched-A cases with explicit non-validation warning
+        run: python scripts/exploratory_forward_horizontal_bed.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/preliminary_forward_check.json
       - name: Archive source bytes and independent case manifest
         if: always()
         uses: actions/upload-artifact@v4
