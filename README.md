@@ -162,6 +162,17 @@ The validation tooling now refuses to convert raw pressure-channel values to Pa 
 
 [Read the flow/pressure, grid and parameter uncertainty audit](docs/methods/M2_FLOW_PRESSURE_CONVERGENCE_AUDIT.md). Case A was already evaluated in the previous development iteration, so it is no longer described as a pristine blind holdout. Cases C/D remain withheld from numerical model fitting, but their measured descriptive summaries are already public and velocity-derived flow still uses measured outlet temperature.
 
+## M2 source-backed 128-cell spatial refinement — still not resolution-qualified
+
+The 1-D two-temperature gas/solid packed-bed solver now has an **exact analytical sparse BDF Jacobian**, regression checked against an independent finite-difference Jacobian across several meshes and optional axial conduction. The original conservative differential equations and integrated energy ledger are unchanged.
+
+The source-locked 2024 horizontal-bed **Case B** study now extends 8→16→32→64→128 cells. Pairwise RMS outlet-temperature changes decline **9.89→5.87→3.25→1.72 K**, with first 80°C crossing shifts **184→106→57→30 s**. Approximate observed grid orders are **0.75, 0.86, 0.92**, consistent with first-order convergence. The finest result still fails the forward-looking **1 K RMS / 15 s** numerical refinement goals; external validation is separate and unpassed. Coarse-grid apparent agreement improves because numerical diffusion masks physical-model errors: Case B RMSE increases from **38.05°C at 16 cells to 43.23°C at 128 cells**.
+
+- [Sparse Jacobian implementation and exact source-locked grid comparisons](docs/methods/M2_SPARSE_JACOBIAN_SPATIAL_CONVERGENCE.md)
+- [Specific missing apparatus/instrument evidence needed to resolve mass flow and pressure](docs/validation/HORIZONTAL_BED_MISSING_METADATA_REQUEST.md)
+
+**No full measured pressure calibration, actual exhaust bore, 2D horizontal-buoyancy validation or exact-target 80°C-source compressor map has been obtained.** As a result M1/M2 remain open; discharge, matched-service optimisation and v1.0 are not claimed.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
