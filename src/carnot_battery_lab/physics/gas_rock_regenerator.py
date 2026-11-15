@@ -107,6 +107,8 @@ def advance_bed(
     area=bed.geometry.cross_section_m2
     u=mass_flow_kg_s/(bed.gas_density_kg_m3*area)
     re=mass_flow_kg_s*bed.geometry.particle_diameter_m/(area*bed.gas_viscosity_Pa_s)
+    if mass_flow_kg_s>0 and not (15.0<=re<=8500.0):
+        raise ValueError("Wakao heat-transfer correlation outside published Re=15..8500 domain")
     pr=bed.gas_cp_J_kgK*bed.gas_viscosity_Pa_s/bed.gas_conductivity_W_mK
     nu=2.0+1.1*(re**0.6)*(pr**(1.0/3.0))
     h=nu*bed.gas_conductivity_W_mK/bed.geometry.particle_diameter_m
