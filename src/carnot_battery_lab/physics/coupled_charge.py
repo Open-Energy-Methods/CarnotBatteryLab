@@ -125,7 +125,7 @@ def _solve_one_charge_step(
     step=ChargeStep(elapsed_s,
         mean_return_K-273.15,supply_K-273.15,
         trial.final_outlet_temperature_K-273.15,
-        result.high_pressure_Pa and (case.process_supply_C+case.condenser_pinch_K),
+        case.process_supply_C+case.condenser_pinch_K,
         result.stage_pressure_ratios,
         compressor_grid,source.pump_electric_W,intercool.pump_electric_W,
         trial.blower_electric_W,total_grid,hp_heat_J,
