@@ -111,6 +111,15 @@ The scientific v1.0 target is a **model-based, externally benchmarked H-family r
 - [Preregistered comparative study matrix and benchmark candidates](docs/V1_STUDY_MATRIX_AND_BENCHMARKS.md)
 - [Verification, validation and scientific v1.0 acceptance protocol](docs/V1_RELEASE_VERIFICATION_PROTOCOL.md)
 
+## Current M1 vertical slice (screening, NOT validated industrial model)
+
+The model now includes a real-fluid R718 single/two-stage water-vapour screening calculation with finite source, condenser and externally-cooled intercooler temperature profiles; required-UA/pinch checks; compressor stage guards; source/process flow availability and shaft/electric heat ledgers. The first demonstration is explicitly illustrative and does **not** represent validated full HP/TES integration, manufacturer compressor matching, dynamic operation or system-wide electricity use.
+
+- [R718 finite-HX screening methods, equations and limitations](docs/methods/R718_FINITE_HX_SCREENING.md)
+- Screening input assumptions: cases/r718_h0_screen_parameters.yaml
+- Generate a hashed, unvalidated JSON result: python scripts/run_r718_reference.py
+- GitHub Actions physics job installs CoolProp and executes real-fluid regression tests.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)

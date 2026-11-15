@@ -1,0 +1,29 @@
+# M1 SCREEN ONLY. Assumptions must not be presented as manufacturer/site data.
+# Reference service: cases/reference_industrial_heat_150C.yaml
+useful_process_heat_W: 1000000.0
+source_inlet_C: 80.0
+source_outlet_C: 70.0
+process_return_C: 110.0
+process_supply_C: 150.0
+source_pinch_K: 5.0
+condenser_pinch_K: 5.0
+minimum_hx_approach_K: 5.0
+suction_superheat_K: 10.0
+intercool_superheat_K: 10.0
+intercool_sink_in_C: 60.0
+intercool_sink_out_C: 75.0
+isentropic_efficiency: 0.74
+motor_efficiency: 0.95
+max_stage_pressure_ratio: 5.0
+max_discharge_C: 350.0
+condenser_UA_W_K: 250000.0
+source_UA_W_K: 250000.0
+intercool_UA_W_K: 250000.0
+source_cp_J_kgK: 4180.0
+process_cp_J_kgK: 4180.0
+intercool_cp_J_kgK: 4180.0
+available_source_flow_kg_s: 25.0
+available_process_flow_kg_s: 10.0
+arrangement: two_stage
+backend: HEOS::Water
+segments: 100
