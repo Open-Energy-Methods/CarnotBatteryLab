@@ -59,8 +59,7 @@ def test_pipe_zero_flow_and_flow_scaling():
 
 def test_liquid_pressure_and_invalid_pipe_rejected():
     with pytest.raises(ValueError):
-        PipeCircuit("bad",1e5,130,40,.05,1e-5,8,.7)
-        # invalid liquid phase is rejected during solve, not at construction
+        PipeCircuit("bad",1e5,130,40,.05,.05,8,.7)
     with pytest.raises(ValueError,match="subcooled"):
         solve_pipe(PipeCircuit("boiling",100000.0,130.0,40,.05,1e-5,8,.7),3.0)
 
