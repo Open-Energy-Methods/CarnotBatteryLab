@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/study_horizontal_bed_fine_mesh_512.py'
       - 'scripts/study_case_B_no_target_leak_512.py'
+      - 'scripts/plot_case_B_fine_mesh_evidence.py'
       - 'tests/test_m2_no_target_leak_grid.py'
       - 'scripts/exploratory_forward_horizontal_bed.py'
       - 'scripts/acquire_horizontal_bed_2024.py'
@@ -30,6 +31,10 @@ jobs:
         run: python scripts/study_horizontal_bed_fine_mesh_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_fine_mesh_512.json
       - name: Run target-independent exhaust-flow 32/64/128/256/512 mesh study
         run: python scripts/study_case_B_no_target_leak_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json
+      - name: Install plotting dependencies and render source-identified scientific figures
+        run: |
+          python -m pip install "matplotlib>=3.8"
+          python scripts/plot_case_B_fine_mesh_evidence.py --historic results/external_horizontal_bed/case_B_fine_mesh_512.json --target-independent results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json --output-dir results/external_horizontal_bed/fine_mesh_figures
       - name: Preserve complete numeric evidence even if refinement target not satisfied
         if: always()
         uses: actions/upload-artifact@v4
@@ -38,6 +43,7 @@ jobs:
           path: |
             results/external_horizontal_bed/case_B_fine_mesh_512.json
             results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json
+            results/external_horizontal_bed/fine_mesh_figures/*.png
             results/external_horizontal_bed/provenance.json
           if-no-files-found: error
           retention-days: 21
