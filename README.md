@@ -173,6 +173,16 @@ The source-locked 2024 horizontal-bed **Case B** study now extends 8→16→32�
 
 **No full measured pressure calibration, actual exhaust bore, 2D horizontal-buoyancy validation or exact-target 80°C-source compressor map has been obtained.** As a result M1/M2 remain open; discharge, matched-service optimisation and v1.0 are not claimed.
 
+## M2 512-cell numerical verification — physical accuracy still unqualified
+
+A source-locked replay of the 2024 copper-slag packed-bed Case B now extends the conservative 1-D two-temperature model to **512 finite-volume cells** and independently verifies heat exchange against an analytical zero-flow solution.
+
+- Original measured-outlet-informed flow: 256→512 **0.448 K** RMS outlet-profile change and **7.87 s** 80°C crossing shift; final measured-data RMSE **44.0°C**. **Not** an independent forward prediction because measured Tout enters the flow estimate.
+- Target-independent implicit exhaust flow: 256→512 **0.595 K** RMS profile change and **6.40 s** crossing shift, meeting the pre-existing provisional **1 K/15 s** numerical screening limits. But 512-cell measured-data RMSE remains **50.1°C** and modelled 80°C breakthrough is about **173 s early**.
+- 2025 source documents 2-inch nominal flanged pipes, NOT actual hot-wire-probe bore or schedule. NPS2 nominal Schedule 40/80 bores (52.48/49.22 mm) are explicitly conditional scenarios, not measured calibration. Raw 2024 pressure units and tap losses are still unverified; **no Ergun experimental validation** is claimed.
+
+[Complete 512-cell methods and physical validation gaps](docs/methods/M2_512_CELL_NUMERICAL_VS_PHYSICAL_VALIDATION.md). The [dedicated reproducible GitHub Actions workflow](.github/workflows/m2-fine-mesh-case-b.yml) archives two Case B numerical JSON outputs, source hashes and three figures. **Physical predictive validation and scientific v1.0 remain blocked.**
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
