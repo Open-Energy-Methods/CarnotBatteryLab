@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'scripts/acquire_public_copper_slag_a1.py'
+      - 'scripts/inspect_public_copper_slag_a1.py'
       - '.github/workflows/external-benchmark-a1.yml'
   workflow_dispatch:
 jobs:
@@ -16,6 +17,8 @@ jobs:
           python-version: "3.11"
       - name: Download raw original licensed experimental time-series (strict)
         run: python scripts/acquire_public_copper_slag_a1.py --require-download --output-dir results/external_a1
+      - name: Parse pinned measured A1/R4 sections and time axis
+        run: python scripts/inspect_public_copper_slag_a1.py --input results/external_a1/copper_slag_axial_A1_radial_R4_original.csv --output results/external_a1/sections_manifest.json
       - name: Archive provenance and source bytes for inspection
         if: always()
         uses: actions/upload-artifact@v4
