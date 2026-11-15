@@ -29,7 +29,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[test,physics]"
       - run: python -m pip install "matplotlib>=3.8"
-      - run: python -m pytest tests/test_finite_hx.py tests/test_r718_realfluid.py tests/test_m1_evidence_hydraulics.py tests/test_m2_gas_rock_coupling.py tests/test_r718_injection_reference.py tests/test_r600_transcritical_screen.py tests/test_m2_solid_conduction.py tests/test_flow_pressure_audit.py tests/test_exhaust_flow_coupling.py tests/test_m2_sparse_jacobian.py tests/test_m2_fine_mesh_analytic.py -v
+      - run: python -m pytest tests/test_finite_hx.py tests/test_r718_realfluid.py tests/test_m1_evidence_hydraulics.py tests/test_m2_gas_rock_coupling.py tests/test_r718_injection_reference.py tests/test_r600_transcritical_screen.py tests/test_m2_solid_conduction.py tests/test_flow_pressure_audit.py tests/test_exhaust_flow_coupling.py tests/test_m2_sparse_jacobian.py tests/test_m2_fine_mesh_analytic.py tests/test_m2_no_target_leak_grid.py -v
       - run: python scripts/run_r718_reference.py --output results/r718_h0_reference_screen.json
       - run: python scripts/run_m1_reference_evidence.py --output results/m1_reference_evidence.json
       - run: python scripts/run_m2_coupled_charge.py --output results/m2_charge_only_screen.json
