@@ -37,6 +37,8 @@ Implemented: real-water CoolProp state calls; two-stage/single-stage model; pres
 
 ## Reproduction
 
+Run inputs are frozen in cases/r718_h0_screen_parameters.yaml, separate from the preexisting H-REF case. The script refuses mismatches against source inlet, process temperatures and nominal load, and writes the study input manifest, case SHA-256, assumption-file SHA-256, git revision, dependency versions and explicit unvalidated-science status to its result JSON.
+
 Install: python -m pip install -e ".[physics,test]"
 
 Tests: python -m pytest tests/test_finite_hx.py tests/test_r718_realfluid.py -v
