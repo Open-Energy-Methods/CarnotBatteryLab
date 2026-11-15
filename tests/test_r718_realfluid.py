@@ -66,8 +66,15 @@ def test_discharge_and_compressor_limits_are_declared_not_silent():
         solve_r718(R718Inputs(max_stage_pressure_ratio=2.0))
 
 
-def test_increased_source_outlet_increases_available_evap_temp():
-    a=solve_r718(R718Inputs())
-    b=solve_r718(R718Inputs(source_outlet_C=73))
+def test_increased_source_outlet_exposes_hot_end_pinch():
+    # With 10 K suction superheat, 68+10 C exceeds the 80-5 C hot-end limit.
+    with pytest.raises(InfeasibleHX,match="pinch"):
+        solve_r718(R718Inputs(source_outlet_C=73))
+
+
+def test_reduced_superheat_allows_higher_evaporation_temperature():
+    # Compare *feasible* points only: 65+6 and 68+6 C both below 80-5 C.
+    a=solve_r718(R718Inputs(suction_superheat_K=6))
+    b=solve_r718(R718Inputs(source_outlet_C=73,suction_superheat_K=6))
     assert b.low_pressure_Pa>a.low_pressure_Pa
     assert b.COP_heating_electric>a.COP_heating_electric
