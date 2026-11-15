@@ -30,7 +30,10 @@ jobs:
       - run: python -m pip install -e ".[test,physics]"
       - run: python -m pytest tests/test_finite_hx.py tests/test_r718_realfluid.py tests/test_m1_evidence_hydraulics.py -v
       - run: python scripts/run_r718_reference.py --output results/r718_h0_reference_screen.json
+      - run: python scripts/run_m1_reference_evidence.py --output results/m1_reference_evidence.json
       - uses: actions/upload-artifact@v4
         with:
           name: r718-unvalidated-reference-screen
-          path: results/r718_h0_reference_screen.json
+          path: |
+            results/r718_h0_reference_screen.json
+            results/m1_reference_evidence.json
