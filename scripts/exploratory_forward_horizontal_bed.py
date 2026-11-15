@@ -70,6 +70,7 @@ def exploratory_forward(
     assumed_pipe_ID_m:float=ASSUMED_EXHAUST_PIPE_ID_M,
     assumed_rock_cp_J_kgK:float=ASSUMED_ROCK_CP_J_KGK,
     assumed_wall_UA_W_K:float=ASSUMED_WALL_UA_W_K,
+    solid_axial_conductivity_W_mK:float=0.0,
     substeps_per_sample:int=1,
     bdf_relative_tolerance:float=1e-7,
 ) -> dict:
@@ -82,6 +83,8 @@ def exploratory_forward(
         raise ValueError("source reports approximate heterogeneous slag cp range 0.8-2.3 kJ/kgK")
     if not 0<=assumed_wall_UA_W_K<=10:
         raise ValueError("wall-UA screening must be finite nonnegative and within explicit scenario range")
+    if not 0<=solid_axial_conductivity_W_mK<=100:
+        raise ValueError("axial conduction scenario not within explicitly declared range")
     if not 0.035<=assumed_pipe_ID_m<=0.075:
         raise ValueError("pipe bore must be an explicitly bounded assumed source sensitivity")
     source=load_case(input_dir,case_id)
@@ -97,6 +100,7 @@ def exploratory_forward(
         rock_cp_J_kgK=assumed_rock_cp_J_kgK,
         ambient_K=records[0]["$T_{0}$"]+273.15,
         wall_UA_W_K=assumed_wall_UA_W_K,
+        solid_axial_conductivity_W_mK=solid_axial_conductivity_W_mK,
     )
     state=_initial_state(bed,records[0])
     time=[records[0]["Time exp."]]
@@ -144,6 +148,7 @@ def exploratory_forward(
         "assumed_exhaust_pipe_ID_m":assumed_pipe_ID_m,
         "rock_cp_J_kgK_assumed":assumed_rock_cp_J_kgK,
         "wall_UA_W_K_assumed":assumed_wall_UA_W_K,
+        "solid_axial_conductivity_W_mK_assumed":solid_axial_conductivity_W_mK,
         "substeps_per_sample":substeps_per_sample,
         "bdf_relative_tolerance":bdf_relative_tolerance,
         "time_s":time,"measured_Tout_C":observed,
