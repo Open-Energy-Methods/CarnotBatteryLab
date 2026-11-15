@@ -28,10 +28,12 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[test,physics]"
+      - run: python -m pip install "matplotlib>=3.8"
       - run: python -m pytest tests/test_finite_hx.py tests/test_r718_realfluid.py tests/test_m1_evidence_hydraulics.py tests/test_m2_gas_rock_coupling.py -v
       - run: python scripts/run_r718_reference.py --output results/r718_h0_reference_screen.json
       - run: python scripts/run_m1_reference_evidence.py --output results/m1_reference_evidence.json
       - run: python scripts/run_m2_coupled_charge.py --output results/m2_charge_only_screen.json
+      - run: python scripts/plot_m2_coupled_charge.py --input results/m2_charge_only_screen.json --output-dir results/figures
       - uses: actions/upload-artifact@v4
         with:
           name: r718-unvalidated-reference-screen
@@ -39,3 +41,4 @@ jobs:
             results/r718_h0_reference_screen.json
             results/m1_reference_evidence.json
             results/m2_charge_only_screen.json
+            results/figures/*.png
