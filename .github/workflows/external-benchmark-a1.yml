@@ -1,0 +1,26 @@
+name: external-packed-bed-data-acquisition
+on:
+  push:
+    paths:
+      - 'scripts/acquire_public_copper_slag_a1.py'
+      - '.github/workflows/external-benchmark-a1.yml'
+  workflow_dispatch:
+jobs:
+  acquire-measured-axial-a1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download raw original licensed experimental time-series (strict)
+        run: python scripts/acquire_public_copper_slag_a1.py --require-download --output-dir results/external_a1
+      - name: Archive provenance and source bytes for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-copper-slag-a1-CC-BY-external-data
+          path: results/external_a1/
+          if-no-files-found: error
+          retention-days: 14
