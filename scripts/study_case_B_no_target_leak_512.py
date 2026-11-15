@@ -98,7 +98,7 @@ def run(input_dir:Path)->dict:
         "measured_Tout_excluded_from_physics":True,
         "still_not_independent_mass_flow_measurement":True,
         "source_exhaust_velocity_and_heater_inlet_are_measured_inputs":True,
-        "pip_bore_ID_m_assumed":0.052,
+        "pipe_bore_ID_m_assumed":0.052,
         "numerical_dependencies":{"numpy":version("numpy"),"scipy":version("scipy")},
         "model_limitations":[
           "No measured exhaust diameter, corrected true mass flow or exhaust-tap pressure",
