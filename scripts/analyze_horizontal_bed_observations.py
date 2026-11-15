@@ -40,7 +40,7 @@ def load_case(directory:Path,case_id:str)->dict:
     rows=list(csv.DictReader(raw.decode("utf-8-sig").splitlines()))
     if len(rows)<50:
         raise ValueError("unexpectedly short experimental series")
-    expected_fields={"Time exp.","Velocity",r"$\Delta P$",*TEMP_FIELDS}
+    expected_fields={"Time exp.","Velocity",r"$\Delta P$",r"$T_{0}$",*TEMP_FIELDS}
     if not expected_fields.issubset(set(rows[0].keys())):
         raise ValueError(f"source measurement columns changed: {set(rows[0].keys())}")
     samples=[]
