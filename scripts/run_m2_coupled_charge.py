@@ -9,6 +9,7 @@ import subprocess
 
 from carnot_battery_lab.physics.r718 import R718Inputs
 from carnot_battery_lab.physics.gas_rock_regenerator import GasRockBed,BedState
+from carnot_battery_lab.physics.packed_bed import PackedBedGeometry
 from carnot_battery_lab.physics.coupled_charge import ChargeControl,simulate_charge
 
 
@@ -25,6 +26,12 @@ def main():
         if not r.completed:
             raise RuntimeError(f"initial_C={initial_C}: {r.termination_reason}")
         runs[str(initial_C)]=asdict(r)
+    # Compact-bed thermal-breakthrough stress: intentionally do not assume
+    # indefinite compressor feasibility; preserve all states before a trip.
+    compact=GasRockBed(geometry=PackedBedGeometry(1.5,3.5,0.045,0.4),
+                       cells=16,wall_UA_W_K=50.0)
+    compact_control=ChargeControl(dt_s=180.0,number_of_steps=20)
+    stress=simulate_charge(compact,BedState.uniform(compact,95.0),hp,compact_control)
     try:
         gitsha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
     except (OSError,subprocess.CalledProcessError):
@@ -37,6 +44,8 @@ def main():
         "hp":asdict(hp),
         "git_sha":gitsha,
         "cases":runs,
+        "compact_bed_breakthrough_stress":asdict(stress),
+        "compact_bed_parameters":asdict(compact),
         "limitations":[
             "Published 2018/2020 compressor stages do not support requested 4.659:1 per-stage reference",
             "Constant density, cp, conductivity and fluid properties for bed; no compressible gas inertia",
@@ -56,6 +65,11 @@ def main():
               f"Qbed={run['cumulative_stored_energy_J']:.1f} J; "
               f"relative energy ledger error="
               f"{run['energy_ledger_residual_J']/run['cumulative_hp_heat_J']:.4g}")
+    print(f"compact-stress completed={stress.completed}; steps={len(stress.steps)}; "
+          f"last_reason={stress.termination_reason}")
+    if stress.steps:
+        print(f"compact-stress first-grid={stress.steps[0].total_grid_electric_W:.1f} W; "
+              f"last-grid={stress.steps[-1].total_grid_electric_W:.1f} W")
     print(f"saved={args.output}")
 
 
