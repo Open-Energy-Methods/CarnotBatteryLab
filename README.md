@@ -154,6 +154,14 @@ The research code now includes a finite-HX real-fluid **R600 n-butane transcriti
 
 The [M1 natural-fluid evidence ledger](docs/methods/M1_NATURAL_FLUID_80C_ENVELOPE.md) separates experimental 60°C-source/160°C R600 operation, the 80°C-source/148.5°C R1233zd(E) experimental HFO prototype, R718 experimental 85°C evaporation/150°C condensation, and a 2019 *simulated* R600 80/75→80/160°C point. None alone proves the exact-target natural-fluid machine. CI generates `results/natural_refrigerant_80C_screen.json`.
 
+## M2 rigorous flow and mesh uncertainty audit — numerical convergence NOT achieved
+
+The 2024 horizontal-bed data have now been re-evaluated using only Case B for numerical-development/sensitivity experiments, with original experimental CSV hashes checked. The **16-cell base model is not spatially converged**: 16→32 cells changes the outlet trajectory by approximately 5.87 K RMS and shifts modeled 80°C breakthrough ~106 s; independent BDF substep/tolerance refinements have negligible effect. Assumed exhaust inner diameter (45/52/60 mm) and source-reported slag cp range (0.8–2.3 kJ/kg K) produce even larger temperature uncertainty. **These are uncertainty scenarios, not fitted effective instrument measurements.**
+
+The validation tooling now refuses to convert raw pressure-channel values to Pa absent sourced instrument scale, zero, pressure-tap locations and independent pipe-loss correction. A separate **implicit exhaust-flow solver** now estimates density from **its own predicted outlet temperature**, not the experimental Tout being evaluated. On source-locked Case B its unfitted 16-cell RMSE remains **37.8°C** and breakthrough remains early. Removing target leakage is methodological progress, not proof of physical model accuracy. A new *optional* rock axial-conduction term uses pairwise conservative internal interface fluxes and adiabatic ends; source-locked Case B tests did **not** establish a real-model accuracy gain from adding conduction.
+
+[Read the flow/pressure, grid and parameter uncertainty audit](docs/methods/M2_FLOW_PRESSURE_CONVERGENCE_AUDIT.md). Case A was already evaluated in the previous development iteration, so it is no longer described as a pristine blind holdout. Cases C/D remain withheld from numerical model fitting, but their measured descriptive summaries are already public and velocity-derived flow still uses measured outlet temperature.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)

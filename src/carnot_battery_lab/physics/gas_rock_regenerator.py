@@ -31,6 +31,7 @@ class GasRockBed:
     rock_cp_J_kgK: float = 850.0
     ambient_K: float = 293.15
     wall_UA_W_K: float = 120.0
+    solid_axial_conductivity_W_mK: float = 0.0  # optional axial rock network; default preserves original results
     blower_efficiency: float = 0.7
 
     def __post_init__(self) -> None:
@@ -43,6 +44,9 @@ class GasRockBed:
             raise ValueError("bed properties and reference temperature must be positive")
         if not math.isfinite(self.wall_UA_W_K) or self.wall_UA_W_K<0:
             raise ValueError("bed wall UA must be nonnegative finite")
+        if (not math.isfinite(self.solid_axial_conductivity_W_mK)
+                or self.solid_axial_conductivity_W_mK<0):
+            raise ValueError("solid axial conductivity must be nonnegative finite")
         if not 0<self.blower_efficiency<=1:
             raise ValueError("blower efficiency must lie in (0,1]")
 
@@ -114,6 +118,12 @@ def advance_bed(
     h=nu*bed.gas_conductivity_W_mK/bed.geometry.particle_diameter_m
     conductance_cell=h*bed.geometry.specific_interfacial_area_m2_per_m3*v
     wall_cell=bed.wall_UA_W_K/n
+    # Constant effective axial rock conduction; Dirichlet-free/adiabatic
+    # boundary ends. Pairwise interface fluxes cancel globally exactly,
+    # so no hidden axial conduction energy creation or loss.
+    dz=bed.geometry.length_m/n
+    axial_conductance_W_K=(bed.solid_axial_conductivity_W_mK*
+                            bed.geometry.cross_section_m2/dz)
     pressure_drop=ergun_pressure_drop_Pa(bed.geometry,u,bed.gas_density_kg_m3,
                                            bed.gas_viscosity_Pa_s)
     blower=hydraulic_power_W(pressure_drop,mass_flow_kg_s/bed.gas_density_kg_m3,
@@ -133,6 +143,11 @@ def advance_bed(
         out=np.zeros_like(y)
         out[:n]=(mcp*(upstream-tf)-transfer)/cf
         out[n:2*n]=(transfer-wall)/cs
+        if axial_conductance_W_K>0:
+            interface_fluxes=axial_conductance_W_K*(ts[1:]-ts[:-1])
+            # Interface i flows from cell i+1 into cell i.
+            out[n:2*n-1] += interface_fluxes/cs
+            out[n+1:2*n] -= interface_fluxes/cs
         out[2*n]=mcp*(inlet_K-tf[-1])
         out[2*n+1]=np.sum(wall)
         return out
