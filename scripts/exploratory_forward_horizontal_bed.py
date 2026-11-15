@@ -58,6 +58,13 @@ def _initial_state(bed:GasRockBed, first:dict)->BedState:
     return BedState(tuple(init),tuple(init))
 
 
+def _first_rising_crossing_s(times:list[float],values:list[float],threshold_C:float)->float|None:
+    for i in range(1,len(times)):
+        if values[i-1]<threshold_C<=values[i]:
+            return times[i-1]+(times[i]-times[i-1])*(threshold_C-values[i-1])/(values[i]-values[i-1])
+    return None
+
+
 def exploratory_forward(
     case_id:str, *, input_dir:Path, cells:int=16,
     assumed_pipe_ID_m:float=ASSUMED_EXHAUST_PIPE_ID_M,
@@ -108,6 +115,10 @@ def exploratory_forward(
             max(abs(step.heat_from_hot_gas_J),abs(step.stored_energy_change_J),1.0))
     observed=[r[r"$T_{out}$"] for r in records]
     errors=np.asarray(prediction[1:])-np.asarray(observed[1:])
+    measured_break=_first_rising_crossing_s(time,observed,80.0)
+    model_break=_first_rising_crossing_s(time,prediction,80.0)
+    breakthrough_error=(None if measured_break is None or model_break is None
+                        else model_break-measured_break)
     return {
         "case_id":case_id,"source_sha256":source["sha256"],
         "status":"EXPLORATORY_UNCALIBRATED_FORWARD_COMPARISON_NOT_VALIDATED",
@@ -118,6 +129,9 @@ def exploratory_forward(
         "assumed_exhaust_pipe_ID_m":assumed_pipe_ID_m,
         "time_s":time,"measured_Tout_C":observed,
         "model_Tout_C":prediction,
+        "observed_first_80C_outlet_crossing_s":measured_break,
+        "model_first_80C_outlet_crossing_s":model_break,
+        "model_minus_measured_80C_breakthrough_s":breakthrough_error,
         "rmse_C":float(np.sqrt(np.mean(errors**2))),
         "mae_C":float(np.mean(np.abs(errors))),
         "bias_C":float(np.mean(errors)),
@@ -159,6 +173,7 @@ def main():
         print("FORWARD_CHECK",
               f"case={cid} RMSE_C={result['rmse_C']:.3f}",
               f"MAE_C={result['mae_C']:.3f}",
+              f"model_minus_meas_80C_s={result['model_minus_measured_80C_breakthrough_s']}",
               f"max_step_energy_residual={result['max_relative_step_energy_residual']:.5g}",
               f"source={result['source_sha256'][:12]}")
     print("VALIDATION_STATUS=NOT_RUN; outlet target enters measured flow boundary")
