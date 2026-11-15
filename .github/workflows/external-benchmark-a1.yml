@@ -10,6 +10,8 @@ on:
       - 'scripts/plot_horizontal_bed_observations.py'
       - 'scripts/exploratory_forward_horizontal_bed.py'
       - 'scripts/study_horizontal_bed_resolution.py'
+      - 'scripts/run_case_B_no_target_leak.py'
+      - 'src/carnot_battery_lab/validation/exhaust_flow_coupling.py'
       - 'src/carnot_battery_lab/validation/flow_pressure_audit.py'
       - 'scripts/plot_exploratory_forward_horizontal_bed.py'
       - '.github/workflows/external-benchmark-a1.yml'
@@ -64,6 +66,8 @@ jobs:
         run: python scripts/plot_exploratory_forward_horizontal_bed.py --input results/external_horizontal_bed/preliminary_forward_check.json --output-dir results/external_horizontal_bed/figures
       - name: Case B only numerical mesh/time convergence and physical input scenarios
         run: python scripts/study_horizontal_bed_resolution.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_resolution_sensitivity.json
+      - name: Case B no-target-leak forward coupling with predicted exhaust density
+        run: python scripts/run_case_B_no_target_leak.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_no_target_leak_forward.json
       - name: Archive source bytes and independent case manifest
         if: always()
         uses: actions/upload-artifact@v4
