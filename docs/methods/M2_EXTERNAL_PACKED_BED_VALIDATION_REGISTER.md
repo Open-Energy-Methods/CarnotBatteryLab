@@ -46,6 +46,22 @@ Pre-register **Case A as held-out experimental run**, with B/C/D as potential ph
 
 The strict comparator in src/carnot_battery_lab/validation/experimental.py reports BLOCKED_METADATA or COMPARED_NOT_VALIDATED. It never sets experimental validation PASS purely because synthetic test arrays match. Tests use explicitly labelled synthetic data to exercise plumbing, not to establish physical accuracy.
 
+## Exploratory forward comparison — a transparent negative finding
+
+Using the existing conservative two-temperature BDF solver, nominal dimensions sourced from Wolde et al. (2022), and fixed **unfitted** rock/gas assumptions, an exploratory forward replay has been run on Cases B and A. Assumptions are stored explicitly in scripts/exploratory_forward_horizontal_bed.py: a **52 mm exhaust pipe inner bore** (not established by source), rock density **3700 kg/m³** and cp **1100 J/(kg K)** (indicative), lumped wall UA **0.5 W/K**, gas density **1 kg/m³**, constant gas cp, μ and k. The script derives its flow from measured exhaust velocity and **measured Tout for outlet air density**, following the earlier experimental paper's mass-flow equation. Because measured Tout is used to estimate the forcing, this is **not an independent blind prediction**. It also approximates the thermocouple axial-centre positions based on their reported 50 mm spacing.
+
+The first GitHub CI execution (unfitted, no optimisation or calibration) gave:
+
+| Metric | Case B | Case A (nominal holdout, not fitted) |
+|---|---:|---:|
+| Model vs measured exhaust temperature RMSE | **38.052 °C** | **24.413 °C** |
+| Mean absolute error | **28.102 °C** | **19.027 °C** |
+| Numerical bed-energy relative residual maximum | **5.9×10⁻¹²** | **4.3×10⁻¹²** |
+
+The low energy residual is a numerical internal-conservation test, **not evidence of external predictive agreement**. Large discrepancies are retained in the output, not hidden or retuned. The code now also reports the **observed vs model 80°C breakthrough crossing time**, marking missing crossings explicitly as null rather than extrapolating. Plots overlay the measured exhaust channel and exploratory model predictions with warnings.
+
+These outputs demonstrate a key scientific limitation: a physically conservative one-dimensional model can significantly miss experiments because of uncertain true air-flow cross section, radial gradients, real material heat capacities, sensor transport delay, pressure drop and heat leaks. No V3 physical validation gate has passed.
+
 ## Source-to-result commands
 
 - python scripts/acquire_public_copper_slag_a1.py --require-download
@@ -58,4 +74,4 @@ The strict comparator in src/carnot_battery_lab/validation/experimental.py repor
 
 Github Actions workflow .github/workflows/external-benchmark-a1.yml runs these acquisitions, saves checksum manifests, raw data and a PDF source extract, and renders **eight original measured-data plots** (4 temperature histories, 4 native pressure vs exhaust velocity). All plots explicitly say measured only; no fabricated or fitted prediction is overlaid.
 
-**Next validation gate:** confirm 2022-to-2024 apparatus continuity, source exact exhaust bore/pressure scale and sensor absolute positions, and perform a calibrated-on-B/C/D, unseen-A nonlinear bed simulation with qualified temperature-dependent material properties and strict holdout. Until then, the reproducible experimental data is obtained, but thermal breakthrough and pressure-loss **model validation is not achieved**.
+**Next validation gate:** use the demonstrated negative model-vs-observation discrepancy to prioritise confirmation of 2022-to-2024 apparatus continuity, source exact exhaust bore/pressure scale and sensor absolute positions, and perform a calibrated-on-B/C/D, unseen-A nonlinear bed simulation with qualified temperature-dependent material properties and strict holdout. Until then, the reproducible experimental data is obtained, but thermal breakthrough and pressure-loss **model validation is not achieved**.
