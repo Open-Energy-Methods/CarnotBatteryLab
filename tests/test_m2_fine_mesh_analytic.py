@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 import runpy
+import sys
 import pytest
 pytest.importorskip("scipy")
 
@@ -16,8 +17,9 @@ from carnot_battery_lab.physics.gas_rock_regenerator import (
     GasRockBed,BedState,advance_bed,
 )
 
-SCRIPT=runpy.run_path(str(Path(__file__).resolve().parents[1]/
-                          "scripts/study_horizontal_bed_fine_mesh_512.py"))
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/"scripts"))
+SCRIPT=runpy.run_path(str(ROOT/"scripts/study_horizontal_bed_fine_mesh_512.py"))
 MESHES=SCRIPT["MESHES"]
 
 
