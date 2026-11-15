@@ -61,6 +61,8 @@ class ChargeStep:
     bed_pressure_drop_Pa: float
     compressor_cop_including_partial_aux: float
     coupling_iterations: int
+    bed_fluid_axial_K: tuple[float,...]
+    bed_solid_axial_K: tuple[float,...]
 
 
 @dataclass(frozen=True)
@@ -131,7 +133,8 @@ def _solve_one_charge_step(
         trial.blower_electric_W,total_grid,hp_heat_J,
         trial.heat_from_hot_gas_J,trial.heat_loss_to_ambient_J,
         trial.stored_energy_change_J,residual,trial.pressure_drop_Pa,
-        result.Q_process_W/total_grid,iteration)
+        result.Q_process_W/total_grid,iteration,
+        trial.final_state.fluid_temperature_K,trial.final_state.solid_temperature_K)
     return step,trial.final_state
 
 
