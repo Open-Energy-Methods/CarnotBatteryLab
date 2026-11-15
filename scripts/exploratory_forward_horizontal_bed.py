@@ -68,7 +68,20 @@ def _first_rising_crossing_s(times:list[float],values:list[float],threshold_C:fl
 def exploratory_forward(
     case_id:str, *, input_dir:Path, cells:int=16,
     assumed_pipe_ID_m:float=ASSUMED_EXHAUST_PIPE_ID_M,
+    assumed_rock_cp_J_kgK:float=ASSUMED_ROCK_CP_J_KGK,
+    assumed_wall_UA_W_K:float=ASSUMED_WALL_UA_W_K,
+    substeps_per_sample:int=1,
+    bdf_relative_tolerance:float=1e-7,
 ) -> dict:
+    if (not isinstance(substeps_per_sample,int) or isinstance(substeps_per_sample,bool)
+            or substeps_per_sample<1 or substeps_per_sample>16):
+        raise ValueError("substeps_per_sample must be an integer in [1,16]")
+    if not 0<bdf_relative_tolerance<=1e-3:
+        raise ValueError("relative tolerance must be in (0,1e-3]")
+    if not 800<=assumed_rock_cp_J_kgK<=2300:
+        raise ValueError("source reports approximate heterogeneous slag cp range 0.8-2.3 kJ/kgK")
+    if not 0<=assumed_wall_UA_W_K<=10:
+        raise ValueError("wall-UA screening must be finite nonnegative and within explicit scenario range")
     if not 0.035<=assumed_pipe_ID_m<=0.075:
         raise ValueError("pipe bore must be an explicitly bounded assumed source sensitivity")
     source=load_case(input_dir,case_id)
@@ -81,9 +94,9 @@ def exploratory_forward(
         gas_cp_J_kgK=1005,gas_viscosity_Pa_s=ASSUMED_GAS_VISCOSITY_PA_S,
         gas_conductivity_W_mK=ASSUMED_GAS_CONDUCTIVITY_W_MK,
         rock_density_kg_m3=ASSUMED_ROCK_RHO_KG_M3,
-        rock_cp_J_kgK=ASSUMED_ROCK_CP_J_KGK,
+        rock_cp_J_kgK=assumed_rock_cp_J_kgK,
         ambient_K=records[0]["$T_{0}$"]+273.15,
-        wall_UA_W_K=ASSUMED_WALL_UA_W_K,
+        wall_UA_W_K=assumed_wall_UA_W_K,
     )
     state=_initial_state(bed,records[0])
     time=[records[0]["Time exp."]]
@@ -101,18 +114,20 @@ def exploratory_forward(
         rho_ex=P_AIR_PA/(R_AIR_J_KG_K*(row[r"$T_{out}$"]+273.15))
         pipe_A=pi*assumed_pipe_ID_m**2/4
         mass_flow=max(0.0,rho_ex*row["Velocity"]*pipe_A)
-        step=advance_bed(
-            bed,state,inlet_K=row[r"$T_{in}$"]+273.15,
-            mass_flow_kg_s=mass_flow,dt_s=dt)
-        state=step.final_state
+        for _ in range(substeps_per_sample):
+            step=advance_bed(
+                bed,state,inlet_K=row[r"$T_{in}$"]+273.15,
+                mass_flow_kg_s=mass_flow,dt_s=dt/substeps_per_sample,
+                relative_tolerance=bdf_relative_tolerance)
+            state=step.final_state
+            wall_loss_J+=step.heat_loss_to_ambient_J
+            energy_residual_rel.append(
+                abs(step.energy_residual_J)/
+                max(abs(step.heat_from_hot_gas_J),abs(step.stored_energy_change_J),1.0))
         time.append(row["Time exp."])
         prediction.append(step.final_outlet_temperature_K-273.15)
-        wall_loss_J+=step.heat_loss_to_ambient_J
         pressure_model_Pa.append(step.pressure_drop_Pa)
         used_flows.append(mass_flow)
-        energy_residual_rel.append(
-            abs(step.energy_residual_J)/
-            max(abs(step.heat_from_hot_gas_J),abs(step.stored_energy_change_J),1.0))
     observed=[r[r"$T_{out}$"] for r in records]
     errors=np.asarray(prediction[1:])-np.asarray(observed[1:])
     measured_break=_first_rising_crossing_s(time,observed,80.0)
@@ -127,6 +142,10 @@ def exploratory_forward(
         "reference_geometry":"Wolde et al. 2022 sec 2.1-2.2, 2025 identical quoted 7.45L rig",
         "model":asdict(bed),
         "assumed_exhaust_pipe_ID_m":assumed_pipe_ID_m,
+        "rock_cp_J_kgK_assumed":assumed_rock_cp_J_kgK,
+        "wall_UA_W_K_assumed":assumed_wall_UA_W_K,
+        "substeps_per_sample":substeps_per_sample,
+        "bdf_relative_tolerance":bdf_relative_tolerance,
         "time_s":time,"measured_Tout_C":observed,
         "model_Tout_C":prediction,
         "observed_first_80C_outlet_crossing_s":measured_break,
