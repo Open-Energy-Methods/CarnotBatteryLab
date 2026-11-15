@@ -111,6 +111,7 @@ future real-fluid models. It is **not required** for foundation tests.
 - [Validation and v1.0 release gates](docs/VALIDATION_AND_RELEASE_GATES.md)
 - [Literature and source registry](references/LITERATURE_EVIDENCE.md)
 - [Actionable implementation backlog](docs/IMPLEMENTATION_BACKLOG.md)
+- [GitHub publication instructions](docs/PUBLISHING_AND_GITHUB_SETUP.md)
 - [Historical corrective audit](legacy_audited_screen/docs/SCIENTIFIC_AUDIT_2026-11-15.md)
 
 ## Licence and citation
