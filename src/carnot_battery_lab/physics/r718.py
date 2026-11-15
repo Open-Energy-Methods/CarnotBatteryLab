@@ -95,6 +95,8 @@ class R718Inputs:
     arrangement: Literal["single","two_stage"] = "two_stage"
     backend: Literal["HEOS::Water","IF97::Water"] = "HEOS::Water"
     segments: int = 100
+    available_source_flow_kg_s: float | None = 25.0  # illustrative availability cap
+    available_process_flow_kg_s: float | None = 10.0  # illustrative availability cap
 
     def __post_init__(self):
         for name,value in vars(self).items():
@@ -119,6 +121,10 @@ class R718Inputs:
             raise InfeasibleCycle("invalid isentropic or motor efficiency")
         if not (self.intercool_sink_out_C>self.intercool_sink_in_C):
             raise InfeasibleCycle("intercooler sink must warm")
+        for name in ("available_source_flow_kg_s","available_process_flow_kg_s"):
+            value=getattr(self,name)
+            if value is not None and (not math.isfinite(value) or value<=0):
+                raise InfeasibleCycle(f"{name} must be positive finite or None")
         if isinstance(self.segments,bool) or not isinstance(self.segments,int) or self.segments<8:
             raise InfeasibleCycle("HX segments must be >=8")
 
@@ -245,11 +251,19 @@ def solve_r718(design: R718Inputs) -> R718Result:
             cold_out_K=design.intercool_sink_out_C+273.15,
             minimum_approach_K=design.minimum_hx_approach_K,
             installed_UA_W_per_K=design.intercool_UA_W_K,segments=design.segments)
-    ss=m*sum(max(0.0,b.entropy_J_kgK-a.entropy_J_kgK) for a,b in
-        ([(suction,comp)] if design.arrangement=="single" else [(state[0],state[1]),(state[2],state[3])]))
+    entropy_rises=[b.entropy_J_kgK-a.entropy_J_kgK for a,b in
+        ([(suction,comp)] if design.arrangement=="single" else [(state[0],state[1]),(state[2],state[3])])]
+    if any(ds < -1e-4 for ds in entropy_rises):
+        raise InfeasibleCycle("compressor negative entropy generation")
+    ss=m*sum(entropy_rises)
+    source_flow=qsource/(design.source_cp_J_kgK*(design.source_inlet_C-design.source_outlet_C))
+    process_flow=design.useful_process_heat_W/(design.process_cp_J_kgK*(design.process_supply_C-design.process_return_C))
+    if design.available_source_flow_kg_s is not None and source_flow>design.available_source_flow_kg_s:
+        raise InfeasibleCycle(f"source heat capacity insufficient: needs {source_flow:.3g} kg/s")
+    if design.available_process_flow_kg_s is not None and process_flow>design.available_process_flow_kg_s:
+        raise InfeasibleCycle(f"process flow availability insufficient: needs {process_flow:.3g} kg/s")
     result=R718Result(design,tuple(state),pe,pc,stage_ratios,m,
-        qsource/(design.source_cp_J_kgK*(design.source_inlet_C-design.source_outlet_C)),
-        design.useful_process_heat_W/(design.process_cp_J_kgK*(design.process_supply_C-design.process_return_C)),
+        source_flow,process_flow,
         flow_inter,qsource,design.useful_process_heat_W,qinter,wshaft,welectric,motor_loss,
         design.useful_process_heat_W/wshaft,design.useful_process_heat_W/welectric,
         qsource+wshaft-design.useful_process_heat_W-qinter,ss,
