@@ -5,6 +5,7 @@ from pathlib import Path
 from hashlib import sha256
 import argparse
 import json
+from importlib.metadata import version
 import subprocess
 
 from carnot_battery_lab.physics.r718 import R718Inputs
@@ -44,6 +45,20 @@ def main():
         "hp":asdict(hp),
         "git_sha":gitsha,
         "cases":runs,
+        "reference_sources": [
+            "doi:10.1016/0009-2509(79)85064-2 (Wakao Nu correlation)",
+            "Ergun 1952 packed-column pressure loss",
+            "doi:10.18462/iir.gl.2018.1367 (nominal design, not map validation)",
+            "doi:10.18462/iir.gl.2020.1019 (separate measured compressor)"
+        ],
+        "dependency_versions": {
+            "CoolProp":version("CoolProp"),"numpy":version("numpy"),
+            "scipy":version("scipy"),"python_carnot_battery_lab":version("carnot-battery-lab")
+        },
+        "input_checksum_sha256":sha256(json.dumps(
+            {"bed":asdict(bed),"control":asdict(control),"hp":asdict(hp),
+             "compact_bed":asdict(compact),"compact_control":asdict(compact_control)},
+            sort_keys=True).encode("utf-8")).hexdigest(),
         "compact_bed_breakthrough_stress":asdict(stress),
         "compact_bed_parameters":asdict(compact),
         "limitations":[
