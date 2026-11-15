@@ -10,7 +10,7 @@ CoolProp documentation https://coolprop.org/fluid_properties/IF97.html explicitl
 
 ## Correct source and process thermal boundaries
 
-The H-REF contract specifies an 80 °C *source inlet* only, insufficient for a finite source-side heat exchanger. In this **supplementary research screening**, the source outlet is assumed 70 °C and minimum approach 5 K, requiring evaporation at 65 °C, NOT 75 °C inferred from inlet alone. Suction superheat is assumed 10 K. At the process end, 150 °C supply and 110 °C return, 5 K pinch yields 155 °C saturated condenser temperature. These choices are illustrative rather than measured or industrially established.
+The H-REF contract specifies an 80 °C *source inlet* only, insufficient for a finite source-side heat exchanger. In this **supplementary research screening**, the source outlet is assumed 70 °C and minimum approach 5 K, requiring evaporation at 65 °C, NOT 75 °C inferred from inlet alone. Suction superheat is assumed 10 K. At the process end, 150 °C supply and 110 °C return, 5 K pinch yields 155 °C saturated condenser temperature. These choices are illustrative rather than measured or industrially established. The reference run imposes an illustrative source-flow availability cap of 25 kg/s and process-flow cap of 10 kg/s, each against the computed mass flow using constant cp. Increasing source return temperature can make a previously acceptable temperature pinch still feasible only with a larger source mass flow. Infeasible source-capacity cases are rejected; no assumed infinite source heat supply.
 
 ## Cycle and balance equations
 
