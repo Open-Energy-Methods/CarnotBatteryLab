@@ -5,6 +5,7 @@ on:
       - 'scripts/acquire_public_copper_slag_a1.py'
       - 'scripts/inspect_public_copper_slag_a1.py'
       - 'scripts/acquire_horizontal_bed_2024.py'
+      - 'scripts/inspect_horizontal_methods.py'
       - '.github/workflows/external-benchmark-a1.yml'
   workflow_dispatch:
 jobs:
@@ -39,6 +40,10 @@ jobs:
           python-version: "3.11"
       - name: Retrieve four published horizontal-flow experimental time-series and source methods
         run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
+      - name: Install PDF text extractor for source methodology
+        run: python -m pip install "pypdf>=5.0"
+      - name: Inspect measured-geometry/sensor PDF with checksum
+        run: python scripts/inspect_horizontal_methods.py --input "results/external_horizontal_bed/Electronic Supplementary Information.pdf" --outdir results/external_horizontal_bed
       - name: Archive source bytes and independent case manifest
         if: always()
         uses: actions/upload-artifact@v4
