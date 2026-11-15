@@ -141,10 +141,11 @@ In addition to the original 80°C-source hardware-**unqualified** screen, the re
 
 The external-data workflow now retrieves and source-hashes a published CC BY 4.0 horizontal packed-bed dataset (DOI 10.17632/j37x6ptpk2.1). Four full runs (A–D), seven in-bed thermocouple channels, measured inlet/outlet temperatures, exhaust velocity and an uncalibrated native differential-pressure channel are archived as an Actions artifact. The project regenerates eight **measured-only** plots and four observed 80°C outlet crossing times, with Case A reserved as the proposed holdout.
 
-**No experimental model-validation claim yet.** The publicly provided README does not specify differential-pressure units or tap positions, and the complete vessel geometry, voidage, sensor coordinates and bed mass flow are not verified. A second dataset (10.17632/fgn79fzg7x.1) advertises axial A1 plus radial R4 but its pinned public CSV contains **R4 only**—the provenance checker explicitly blocks using it for axial validation.
+**No experimental model-validation claim yet.** A related 2022 publication by the same team documents the 400 mm × 158 mm horizontal vessel, ~20 mm slag particles, ~0.39 estimated porosity and 50 mm thermocouple spacing, but exact 2024 apparatus identity, exhaust bore, absolute sensor offsets, logged pressure units/calibration, material properties and bed flow remain insufficiently confirmed. A second dataset (10.17632/fgn79fzg7x.1) advertises axial A1 plus radial R4 but its pinned public CSV contains **R4 only**—the provenance checker explicitly blocks using it for axial validation.
 
 - [External packed-bed evidence, exact case hashes, observations, restrictions and holdout protocol](docs/methods/M2_EXTERNAL_PACKED_BED_VALIDATION_REGISTER.md)
 - [Temperature/pressure validation comparators with strict source/holdout gates](src/carnot_battery_lab/validation/experimental.py)
+- Unfitted preliminary 1D forward comparisons with Case B and an untouched Case A yield RMSE **38.1°C and 24.4°C** respectively, despite excellent numerical energy conservation. This is a documented **negative accuracy finding**, not validation; the flow calculation uses measured outlet temperature and an assumed exhaust-pipe bore. See the source/evidence register for uncertainty and caveats.
 - [GitHub Actions external measured-data workflow](.github/workflows/external-benchmark-a1.yml)
 
 ## Development and evidence
