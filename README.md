@@ -148,6 +148,12 @@ The external-data workflow now retrieves and source-hashes a published CC BY 4.0
 - Unfitted preliminary 1D forward comparisons with Case B and an untouched Case A yield RMSE **38.1°C and 24.4°C** respectively, despite excellent numerical energy conservation. This is a documented **negative accuracy finding**, not validation; the flow calculation uses measured outlet temperature and an assumed exhaust-pipe bore. See the source/evidence register for uncertainty and caveats.
 - [GitHub Actions external measured-data workflow](.github/workflows/external-benchmark-a1.yml)
 
+## Source-compatible natural-fluid cycle screening — NOT compressor-qualified
+
+The research code now includes a finite-HX real-fluid **R600 n-butane transcritical** candidate for the original **80→70°C waste-source / 110→150°C process** thermal service. It evaluates five high-side pressures with CoolProp, mass/energy balance, HX pinch and UA constraints and source/process flow limits. Numerically feasible points are explicitly **not matched to a manufacturer compressor speed/surge/choke/discharge map**, and the high-pressure search is **not a certified operating envelope**.
+
+The [M1 natural-fluid evidence ledger](docs/methods/M1_NATURAL_FLUID_80C_ENVELOPE.md) separates experimental 60°C-source/160°C R600 operation, the 80°C-source/148.5°C R1233zd(E) experimental HFO prototype, R718 experimental 85°C evaporation/150°C condensation, and a 2019 *simulated* R600 80/75→80/160°C point. None alone proves the exact-target natural-fluid machine. CI generates `results/natural_refrigerant_80C_screen.json`.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
