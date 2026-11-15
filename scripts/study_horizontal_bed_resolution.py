@@ -50,6 +50,8 @@ def study(input_dir:Path)->dict:
         ("pipe_ID_060m",{"cells":16,"assumed_pipe_ID_m":.060}),
         ("slag_cp_0800",{"cells":16,"assumed_rock_cp_J_kgK":800}),
         ("slag_cp_2300",{"cells":16,"assumed_rock_cp_J_kgK":2300}),
+        ("solid_axial_k_2",{"cells":16,"solid_axial_conductivity_W_mK":2.0}),
+        ("solid_axial_k_10",{"cells":16,"solid_axial_conductivity_W_mK":10.0}),
     ):
         run=exploratory_forward("B",input_dir=input_dir,**parameters)
         profiles[name]={
@@ -89,6 +91,8 @@ def study(input_dir:Path)->dict:
         "already_inspected_not_blind":"A",
         "calibration_runs":["B"],
         "source_backed_slag_cp_range_J_kgK":[800,2300],
+        "solid_axial_conduction_values_W_mK":[0,2,10],
+        "solid_conduction_scenario_is_NOT_fitted_or_measured":True,
         "nominal_pipe_ID_m":.052,
         "assumed_pipe_ID_scenarios_m":[.045,.052,.060],
         "flow_area_analytical_sensitivity":sample,
