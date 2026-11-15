@@ -65,7 +65,16 @@ def acquire(outdir: Path) -> dict:
             downloaded=_download(url)
             csv_bytes=_as_csv(downloaded)
             # Reject a server error or insufficient measurement table.
-            text=csv_bytes.decode("utf-8-sig")
+            # Some laboratory CSV exports use Windows-1252 for degree
+            # symbols; retain ORIGINAL bytes and log the decoding explicitly.
+            try:
+                text=csv_bytes.decode("utf-8-sig")
+                encoding="utf-8-sig"
+            except UnicodeDecodeError:
+                text=csv_bytes.decode("cp1252")
+                encoding="cp1252"
+            if text.count("\x00")>0:
+                raise ValueError("binary/UTF16 content must be explicitly converted and recorded")
             sample=text[:4096]
             dialect=csv.Sniffer().sniff(sample,delimiters=",;\t")
             rows=list(csv.reader(io.StringIO(text),dialect))
@@ -102,6 +111,7 @@ def acquire(outdir: Path) -> dict:
         "dataset_authors":"Cardemil Iglesias, Battisti, Calderon-Vasquez et al.",
         "experiment":"Axial A1 charge/discharge at 150C; radial R4 at 300C, separate geometries",
         "source_csv_sha256":csv_sha,
+        "preview_decoding":encoding,
         "csv_bytes":len(csv_bytes),
         "row_count":len(rows),
         "row_widths":sorted(set(len(row) for row in rows))[:15],
