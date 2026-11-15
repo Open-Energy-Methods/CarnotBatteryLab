@@ -45,6 +45,23 @@ The regenerator now optionally includes *pairwise-conservative*, no-end-flux axi
 
 The additional output scenarios of `k_s=2` and `10 W/m K` are structural-sensitivity experiments only. Verified source-locked Case B runs yielded **38.061°C RMSE, 1,405 s 80°C crossing** for `k_s=2` and **39.458°C RMSE, 1,265 s crossing** for `k_s=10`, compared with 38.052°C RMSE and 1,451 s crossing at `k_s=0`. **Increasing axial conduction did not materially improve RMSE**, and at 10 W/m K substantially moved the front earlier. It would be scientifically unsound to label this new term a validated correction without physical conductivity data and a resolved flow boundary. A more sophisticated energy/flow model must independently specify temperature-dependent slag cp, measured rock thermal conductivity, wall inertia, pressure-dependent air density, and two-dimensional effects.
 
+## Predictor-based exhaust flow removes the previous Tout-target leakage
+
+The earlier Wolde Eq.(1) forcing used observed exhaust `Tout(t)` to calculate density and mass flow, therefore comparing model `Tout(t)` to measured `Tout(t)` was not a fully independent forward test. A new module, `validation/exhaust_flow_coupling.py`, now iteratively solves `m_dot = p A v_measured / (R T_out,model)` within each model time interval: all fixed-point trials start from the **same initial bed state**, so they do not double-count charging energy; the bed is advanced only with the final converged mass flow. The measured `Tout(t)` is only accessed **after** model integration for RMSE/MAE calculation. External measured exhaust velocity, inlet Tin and measured initial T1–T7 remain permitted source-forcing/state measurements. BDF integration remains energetically conservative.
+
+**Source-hashed Case B only, initial 16-cell model and assumed 52mm pipe:**
+
+| Criterion | Earlier measured-Tout-dependent mass flow | Predicted-Tout implicit flow |
+|---|---:|---:|
+| RMSE to Case B measured outlet | 38.052°C | **37.777°C** |
+| MAE to Case B measured outlet | 28.102°C | **28.607°C** |
+| Model first 80°C outlet crossing | 1450.85 s | **1495.08 s** |
+| Experimental first 80°C outlet crossing | 1847.84 s | 1847.84 s |
+| Mean implicit flow iterations per step | Not applicable | **8.91** |
+| Maximum relative flow fixed-point residual | Not applicable | **9.93×10⁻⁷** |
+
+**Interpretation:** model-target leakage has been removed, but **physical predictive accuracy is not yet acceptable** and only a small change in RMSE was observed. The new boundary assumes model bed outlet temperature equals the downstream exhaust sensor temperature, and uses unverified pipe ID and exhaust pressure; the model still assumes constant density in bed fluid inventory while varying exhaust mass flow using the ideal-gas law. The previous spatial 16→32 mesh sensitivity makes differences of ~0.3°C RMSE statistically meaningless as evidence of a better physical model. The new result is a methodological and input-independence correction, not a validation pass. No C/D full model simulations have been run.
+
 ## Test-split integrity
 
 The previous development iteration **already evaluated Case A** and reported its RMSE and breakthrough error. Even though no parameters were fitted to A, it is no longer an entirely *unseen* blind test; do not use that label. Case B is the sole numerical-development run for the present study; **Cases C and D are excluded from simulation and parameter selection** until the model and uncertainty gates are frozen. Their measured-only descriptive statistics were published previously, so even these should be called *held-out from model fitting*, not inaccessible data or completely blind evaluation. Using their actual Tout to infer flow will still be a partially target-informed simulation.
@@ -62,5 +79,6 @@ The previous development iteration **already evaluated Case A** and reported its
 - `python -m pip install -e ".[physics,test]"`
 - `python -m pytest tests/test_flow_pressure_audit.py tests/test_m2_solid_conduction.py -v`
 - `python scripts/study_horizontal_bed_resolution.py --input-dir results/external_horizontal_bed`
+- `python scripts/run_case_B_no_target_leak.py --input-dir results/external_horizontal_bed`
 
 All numerical resolution, measurement and physically motivated scenario results are JSON artifacts of the external-data workflow, not hand-edited data files. Do not interpret a Python test PASS as experimental model validity.
