@@ -130,6 +130,13 @@ The model now includes a real-fluid R718 single/two-stage water-vapour screening
 
 **The published compressor evidence does not support the present high-lift 5:1-per-stage design.** The latter remains a numerical **hypothesis/control** pending a viable multi-stage compressor or alternative natural-fluid/cascade design. No architecture is yet experimentally validated or cost-optimised.
 
+## Published nominal R718 compressor design-point reproduction
+
+In addition to the original 80°C-source hardware-**unqualified** screen, the research code now contains a separate **2018 liquid-injection two-stage** R718 cycle matching the nominal stage pressure/temperature design conditions documented by Zühlsdorf et al. It predicts the second-stage mass flow and inlet volume flow without tuning them to the table. This uses a hotter **120°C illustrative source** and does **not** validate an 80°C-source installation, a vendor compressor speed line, or dynamic TES operation.
+
+- [Read exact source, mass/enthalpy balance, independent comparison and remaining hardware gaps](docs/methods/M1_PUBLISHED_R718_INJECTION_DESIGN_POINT.md)
+- Re-run: `python scripts/run_r718_injection_design.py` (CoolProp required; JSON archived by CI).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
