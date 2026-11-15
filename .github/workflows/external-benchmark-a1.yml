@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/acquire_public_copper_slag_a1.py'
       - 'scripts/inspect_public_copper_slag_a1.py'
+      - 'scripts/acquire_horizontal_bed_2024.py'
       - '.github/workflows/external-benchmark-a1.yml'
   workflow_dispatch:
 jobs:
@@ -25,5 +26,24 @@ jobs:
         with:
           name: raw-copper-slag-a1-CC-BY-external-data
           path: results/external_a1/
+          if-no-files-found: error
+          retention-days: 14
+
+  acquire-horizontal-bed-2024:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Retrieve four published horizontal-flow experimental time-series and source methods
+        run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
+      - name: Archive source bytes and independent case manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizontal-packed-bed-2024-originals-CC-BY
+          path: results/external_horizontal_bed/
           if-no-files-found: error
           retention-days: 14
