@@ -1,0 +1,70 @@
+name: external-packed-bed-data-acquisition
+on:
+  push:
+    paths:
+      - 'scripts/acquire_public_copper_slag_a1.py'
+      - 'scripts/inspect_public_copper_slag_a1.py'
+      - 'scripts/acquire_horizontal_bed_2024.py'
+      - 'scripts/inspect_horizontal_methods.py'
+      - 'scripts/analyze_horizontal_bed_observations.py'
+      - 'scripts/plot_horizontal_bed_observations.py'
+      - 'scripts/exploratory_forward_horizontal_bed.py'
+      - 'scripts/plot_exploratory_forward_horizontal_bed.py'
+      - '.github/workflows/external-benchmark-a1.yml'
+  workflow_dispatch:
+jobs:
+  acquire-measured-axial-a1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download raw original licensed experimental time-series (strict)
+        run: python scripts/acquire_public_copper_slag_a1.py --require-download --output-dir results/external_a1
+      - name: Parse pinned measured A1/R4 sections and time axis
+        run: python scripts/inspect_public_copper_slag_a1.py --input results/external_a1/copper_slag_axial_A1_radial_R4_original.csv --output results/external_a1/sections_manifest.json
+      - name: Archive provenance and source bytes for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-copper-slag-a1-CC-BY-external-data
+          path: results/external_a1/
+          if-no-files-found: error
+          retention-days: 14
+
+  acquire-horizontal-bed-2024:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Retrieve four published horizontal-flow experimental time-series and source methods
+        run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
+      - name: Install PDF text extractor for source methodology
+        run: python -m pip install "pypdf>=5.0"
+      - name: Inspect measured-geometry/sensor PDF with checksum
+        run: python scripts/inspect_horizontal_methods.py --input "results/external_horizontal_bed/Electronic Supplementary Information.pdf" --outdir results/external_horizontal_bed
+      - name: Calculate measured-only breakthrough and pressure diagnostics
+        run: python scripts/analyze_horizontal_bed_observations.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/measured_observations.json
+      - name: Install plotting library for original measurements
+        run: python -m pip install "matplotlib>=3.8"
+      - name: Regenerate all measured thermocouple and native pressure traces
+        run: python scripts/plot_horizontal_bed_observations.py --input-dir results/external_horizontal_bed --output-dir results/external_horizontal_bed/figures
+      - name: Install numerical dependencies for uncalibrated preliminary forward replay
+        run: python -m pip install -e ".[physics]"
+      - name: Forward-replay source-forced B and untouched-A cases with explicit non-validation warning
+        run: python scripts/exploratory_forward_horizontal_bed.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/preliminary_forward_check.json
+      - name: Visualise unfitted thermal breakthrough discrepancies and their source limitations
+        run: python scripts/plot_exploratory_forward_horizontal_bed.py --input results/external_horizontal_bed/preliminary_forward_check.json --output-dir results/external_horizontal_bed/figures
+      - name: Archive source bytes and independent case manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizontal-packed-bed-2024-originals-CC-BY
+          path: results/external_horizontal_bed/
+          if-no-files-found: error
+          retention-days: 14
