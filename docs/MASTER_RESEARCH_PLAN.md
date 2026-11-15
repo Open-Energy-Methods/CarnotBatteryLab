@@ -2,8 +2,10 @@
 
 **Revision:** 1.0 (planning baseline, 2026-11-15)
 **Software release:** v0.1.0 research foundation; no v1.0 physics claim
-**Working repository:** `Open-Energy-Methods/CarnotBatteryLab` (remote pending)
+**Working repository:** `Open-Energy-Methods/CarnotBatteryLab` (published; see the GitHub main branch)
 **Time horizon:** scientific readiness, not an application deadline
+
+**Detailed v1.0 implementation contract:** see `V1_SCIENTIFIC_EXECUTION_PROGRAM.md`, `V1_STUDY_MATRIX_AND_BENCHMARKS.md`, and `V1_RELEASE_VERIFICATION_PROTOCOL.md`; these supplement the WP00–WP10 baseline rather than replacing it.
 
 ## Executive design decision
 
