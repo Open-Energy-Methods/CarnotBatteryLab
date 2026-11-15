@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'scripts/study_horizontal_bed_fine_mesh_512.py'
+      - 'scripts/study_case_B_no_target_leak_512.py'
+      - 'tests/test_m2_no_target_leak_grid.py'
       - 'scripts/exploratory_forward_horizontal_bed.py'
       - 'scripts/acquire_horizontal_bed_2024.py'
       - 'src/carnot_battery_lab/physics/gas_rock_regenerator.py'
@@ -26,6 +28,8 @@ jobs:
         run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
       - name: Source-locked Case B spatial refinement on 64/128/256/512 cells
         run: python scripts/study_horizontal_bed_fine_mesh_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_fine_mesh_512.json
+      - name: Run target-independent exhaust-flow 32/64/128/256/512 mesh study
+        run: python scripts/study_case_B_no_target_leak_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json
       - name: Preserve complete numeric evidence even if refinement target not satisfied
         if: always()
         uses: actions/upload-artifact@v4
@@ -33,6 +37,7 @@ jobs:
           name: m2-case-B-source-locked-512-mesh-evidence
           path: |
             results/external_horizontal_bed/case_B_fine_mesh_512.json
+            results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json
             results/external_horizontal_bed/provenance.json
           if-no-files-found: error
           retention-days: 21
