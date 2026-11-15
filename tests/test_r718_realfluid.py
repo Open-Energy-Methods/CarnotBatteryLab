@@ -78,3 +78,27 @@ def test_reduced_superheat_allows_higher_evaporation_temperature():
     b=solve_r718(R718Inputs(source_outlet_C=73,suction_superheat_K=6))
     assert b.low_pressure_Pa>a.low_pressure_Pa
     assert b.COP_heating_electric>a.COP_heating_electric
+
+
+def test_finite_source_and_process_mass_flow_availability():
+    with pytest.raises(InfeasibleCycle,match="source heat capacity insufficient"):
+        solve_r718(R718Inputs(available_source_flow_kg_s=5))
+    with pytest.raises(InfeasibleCycle,match="process flow availability insufficient"):
+        solve_r718(R718Inputs(available_process_flow_kg_s=5))
+
+
+def test_screening_manifest_frozen_inputs(tmp_path):
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+    root=Path(__file__).resolve().parents[1]
+    target=tmp_path/'r718.json'
+    subprocess.run([sys.executable,str(root/'scripts/run_r718_reference.py'), '--output',str(target)],
+                   cwd=root,check=True,capture_output=True,text=True)
+    data=json.loads(target.read_text())
+    assert data['scientific_status'].startswith('numerical_screen_unvalidated')
+    assert len(data['model_assumptions_sha256'])==64
+    assert len(data['study_manifest']['case_sha256'])==64
+    assert data['study_manifest']['case_id']=='industrial-heat-150c-reference'
+    assert data['inputs']['source_outlet_C']==70.0
