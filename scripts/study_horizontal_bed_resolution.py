@@ -43,6 +43,8 @@ def study(input_dir:Path)->dict:
         ("grid_08",{"cells":8}),
         ("grid_16",{"cells":16}),
         ("grid_32",{"cells":32}),
+        ("grid_64",{"cells":64}),
+        ("grid_128",{"cells":128}),
         ("dt_half",{"cells":16,"substeps_per_sample":2}),
         ("dt_quarter",{"cells":16,"substeps_per_sample":4}),
         ("bdf_strict",{"cells":16,"bdf_relative_tolerance":1e-9}),
@@ -71,6 +73,22 @@ def study(input_dir:Path)->dict:
         "model_Tout_C":baseline["model_outlet_temperature_C"],
         "model_first_80C_outlet_crossing_s":baseline["predicted_first_80C_s"],
     }
+    # Pairwise refinement differences measure *actual spatial asymptotic
+    # behaviour*, not just deviation from a convenient 16-cell baseline.
+    grid_refinements={}
+    for coarse,fine in (("grid_08","grid_16"),("grid_16","grid_32"),
+                        ("grid_32","grid_64"),("grid_64","grid_128")):
+        a=profiles[coarse]
+        b=profiles[fine]
+        grid_refinements[f"{coarse}_to_{fine}"]=differences(
+            {"source_sha256":a["raw_experiment_sha256"],
+             "time_s":a["time_s"],
+             "model_Tout_C":a["model_outlet_temperature_C"],
+             "model_first_80C_outlet_crossing_s":a["predicted_first_80C_s"]},
+            {"source_sha256":b["raw_experiment_sha256"],
+             "time_s":b["time_s"],
+             "model_Tout_C":b["model_outlet_temperature_C"],
+             "model_first_80C_outlet_crossing_s":b["predicted_first_80C_s"]})
     comparisons={}
     for name,run in profiles.items():
         cmp={
@@ -98,6 +116,8 @@ def study(input_dir:Path)->dict:
         "flow_area_analytical_sensitivity":sample,
         "profiles":profiles,
         "outlet_differences_against_n16":comparisons,
+        "grid_pairwise_refinement_differences":grid_refinements,
+        "spatial_convergence_claim":"NOT_ASSERTED_UNTIL_FINEST_GRID_FRONT_AND_PROFILE_TOLERANCES_PASS",
         "requirements_before_claiming_numerical_convergence":[
             "actual three-level asymptotic numerical convergence in T_out(t)",
             "simulation time/step convergence demonstrated separately",
@@ -123,6 +143,11 @@ def main():
               f"RMSEexp={profile['rmse_to_experiment_C_NOT_VALIDATION']:.3f}",
               f"RMSagainst_n16={delta['temperature_grid_RMS_difference_K']:.4f}",
               f"first_80C={profile['predicted_first_80C_s']}")
+    for pair,difference in result["grid_pairwise_refinement_differences"].items():
+        print("SPATIAL_REFINEMENT_PAIR",pair,
+              f"rms_K={difference['temperature_grid_RMS_difference_K']:.5f}",
+              f"max_K={difference['temperature_grid_max_absolute_difference_K']:.5f}",
+              f"crossing_shift_s={difference['model_80C_breakthrough_shift_s']}")
     print("CASE_C_D_NOT_READ; STATUS=NUMERICAL_UNCERTAINTY_DIAGNOSTIC_NOT_PHYSICAL_VALIDATION")
 
 
