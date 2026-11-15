@@ -5,6 +5,8 @@ import runpy
 import sys
 import pytest
 
+pytest.importorskip("scipy")
+
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"))
 module=runpy.run_path(str(ROOT/"scripts/study_case_B_no_target_leak_512.py"))
