@@ -137,6 +137,16 @@ In addition to the original 80°C-source hardware-**unqualified** screen, the re
 - [Read exact source, mass/enthalpy balance, independent comparison and remaining hardware gaps](docs/methods/M1_PUBLISHED_R718_INJECTION_DESIGN_POINT.md)
 - Re-run: `python scripts/run_r718_injection_design.py` (CoolProp required; JSON archived by CI).
 
+## Independent packed-bed experimental evidence — validation still open
+
+The external-data workflow now retrieves and source-hashes a published CC BY 4.0 horizontal packed-bed dataset (DOI 10.17632/j37x6ptpk2.1). Four full runs (A–D), seven in-bed thermocouple channels, measured inlet/outlet temperatures, exhaust velocity and an uncalibrated native differential-pressure channel are archived as an Actions artifact. The project regenerates eight **measured-only** plots and four observed 80°C outlet crossing times, with Case A reserved as the proposed holdout.
+
+**No experimental model-validation claim yet.** The publicly provided README does not specify differential-pressure units or tap positions, and the complete vessel geometry, voidage, sensor coordinates and bed mass flow are not verified. A second dataset (10.17632/fgn79fzg7x.1) advertises axial A1 plus radial R4 but its pinned public CSV contains **R4 only**—the provenance checker explicitly blocks using it for axial validation.
+
+- [External packed-bed evidence, exact case hashes, observations, restrictions and holdout protocol](docs/methods/M2_EXTERNAL_PACKED_BED_VALIDATION_REGISTER.md)
+- [Temperature/pressure validation comparators with strict source/holdout gates](src/carnot_battery_lab/validation/experimental.py)
+- [GitHub Actions external measured-data workflow](.github/workflows/external-benchmark-a1.yml)
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
