@@ -1,0 +1,43 @@
+name: m1-5-independent-compressor-map-acceptance
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/measured_compressor_map_gate.py'
+      - 'scripts/run_m1_5_map_acceptance.py'
+      - 'tests/test_m1_5_measured_map_gate.py'
+      - 'docs/methods/M1_5_MEASURED_MAP_ACCEPTANCE.md'
+      - '.github/workflows/m1-5-independent-compressor-map-acceptance.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/measured_compressor_map_gate.py'
+      - 'scripts/run_m1_5_map_acceptance.py'
+      - 'tests/test_m1_5_measured_map_gate.py'
+      - 'docs/methods/M1_5_MEASURED_MAP_ACCEPTANCE.md'
+      - '.github/workflows/m1-5-independent-compressor-map-acceptance.yml'
+  workflow_dispatch:
+jobs:
+  enforce-measured-map-envelope-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real-fluid physics and scientific tests
+        run: python -m pip install -e ".[physics,test]"
+      - name: Verify fit-holdout separation, fixed-speed interior support and fail-closed hardware gate
+        run: python -m pytest tests/test_m1_5_measured_map_gate.py tests/test_m1_compressor_envelope_requirements.py -v
+      - name: Reconstruct input-hashed M1.4 real-fluid compressor requirements
+        run: python scripts/run_m1_compressor_map_requirements.py --output results/m1_compressor_map_requirements_80_70_to_110_150.json
+      - name: Generate explicit no-map acceptance report
+        run: python scripts/run_m1_5_map_acceptance.py --requirements results/m1_compressor_map_requirements_80_70_to_110_150.json --output results/m1_5_independent_compressor_map_acceptance.json
+      - name: Upload reproducible no-map evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-5-map-acceptance-NO-MEASURED-MAPS-not-hardware-qualified
+          path: |
+            results/m1_5_independent_compressor_map_acceptance.json
+            results/m1_compressor_map_requirements_80_70_to_110_150.json
+          if-no-files-found: error
+          retention-days: 45
