@@ -42,6 +42,24 @@ def audit_headers_and_channel_parse(raw:bytes)->dict:
         out["processed_column_count"]=len(rows[0])
         out["processed_total_line_count"]=len(rows)
         out["processed_data_rows_after_11_assumed_only_not_accepted"]=max(0,len(rows)-11)
+        # The first 11 original lines are multirow descriptive header; inspect
+        # only aggregate category counts and sensor availability in data rows.
+        categories=Counter()
+        completeness=Counter()
+        field_indices=(3,6,7,11,12,17,30,31,32,45,46,49)
+        for data_row in rows[11:]:
+            if len(data_row)!=66:continue
+            category=data_row[1].strip()
+            if not category:continue
+            categories[category]+=1
+            available=tuple(i for i in field_indices
+                            if _numeric(data_row[i]) is not None)
+            completeness[(category,len(available))]+=1
+        out["original_processed_working_fluid_category_counts"]=dict(categories)
+        out["original_processed_numeric_completeness_by_fluid"]=[
+            {"working_fluid_metadata":name,"available_numeric_fields":n,
+             "row_count":count}
+            for (name,n),count in sorted(completeness.items())]
         original_labeled_paths=[
             p for p in z.namelist()
             if p.startswith("data/GitLab Code/measurement_data/Bitzer Data Log/")
@@ -89,6 +107,10 @@ def main():
     a.output.write_text(json.dumps(obj,indent=2,sort_keys=True)+"\n")
     print("M1_8_PROCESSED_TABLE_META",obj["processed_column_count"],
           obj["processed_total_line_count"])
+    print("M1_8_ORIGINAL_PROCESSED_WORKING_FLUIDS",
+          obj["original_processed_working_fluid_category_counts"])
+    print("M1_8_PROCESSED_NUMERIC_COMPLETENESS",
+          obj["original_processed_numeric_completeness_by_fluid"])
     for field in obj["processed_66_column_multiline_header_metadata"]:
         labels=[x["header"] for x in field["headings"]]
         print("M1_8_PROCESSED_COLUMN",field["column_0based"]," / ".join(labels))
