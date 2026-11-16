@@ -191,6 +191,12 @@ New [source and instrument evidence](docs/methods/M2_MIXED_PHASE_SENSOR_EVIDENCE
 
 The original public data provider lists an author contact for additional experiment metadata. A [specific author information request](docs/validation/REQUEST_HORIZONTAL_BED_INSTRUMENT_METADATA.md) is prepared **but has not been sent**. Source-qualified gas-flow and pressure instrument calibration, sensor response and actual material properties remain the M2 external-validation blockers.
 
+## First source-backed mixed-phase Type-K sensor discrepancy — NOT validated
+
+The new 128-cell Case B phase/position-extrema pipeline found that **46–56%** of measured T1–T7 readings lie outside even a permissive simulated gas/rock temperature envelope over all possible (unmeasured) axial first-sensor offsets, with maximum outside distances increasing up to **91°C at T7**. These are **source-locked exploratory incompatibility diagnostics**, not calibrated observation uncertainty or physical validation, and the sensor operator has not been separately grid qualified. The first thermocouple sample was used to initialise the model and excluded from scoring.
+
+[Original instrumentation evidence and scientific limitations](docs/methods/M2_MIXED_PHASE_SENSOR_EVIDENCE.md) · [Author metadata request, prepared but not sent](docs/validation/REQUEST_HORIZONTAL_BED_INSTRUMENT_METADATA.md). Physical calibration and M2 remain **blocked** despite the previously demonstrated 512-cell outlet numerical convergence.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
