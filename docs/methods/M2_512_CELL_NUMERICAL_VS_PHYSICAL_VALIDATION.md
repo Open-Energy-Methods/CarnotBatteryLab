@@ -79,6 +79,15 @@ The 512-cell model breakthrough remains about **173 seconds earlier** than measu
 
 The 2025 paper (doi:10.1016/j.est.2025.116769) reports a calibrated *different* analytical single-temperature surrogate with normalized error near 4%; that result **must not** be compared directly with the absolute RMSE of this unfitted two-temperature model without consistent metrics, boundaries, calibration and test splits.
 
+
+## Independent physical-validation readiness machine gate
+
+A separate source-locked program, scripts/report_m2_physical_validation_readiness.py, reads **both** historical and predicted-exhaust-flow 512-cell result JSON files from the same workflow. It verifies source dataset DOI, raw Case B SHA-256, development-run identity, the explicit measured-outlet dependency of the historical model, the absence of measured-outlet forcing in the target-independent model, and independently recorded numerical refinement statuses.
+
+It then emits physical_validation_readiness.json with a **blocked** experimental readiness result even when both numerical mesh criteria pass. The blockers are source-verified missing instrumentation, not solver defects: true exhaust probe internal bore/velocity traverse and gas flow, differential-pressure scale/zero/tap/duct correction and uncertainty, exact thermocouple positions/response, original copper-slag temperature-dependent properties, and horizontal radial transport. All of these require independent laboratory documentation or new measurements; model accuracy cannot be established by choosing convenient values to fit Case B.
+
+The readiness test is invoked within the existing m2-fine-mesh-case-b workflow and checks that a numerical PASS never becomes a physical validation PASS. The actual full-run holdout C/D comparison must remain off until the independent boundary and model-error protocol are frozen.
+
 ## Reproduce exact source-locked evidence
 
     python -m pip install -e ".[physics,test]"

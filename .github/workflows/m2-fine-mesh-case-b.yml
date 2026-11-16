@@ -4,6 +4,8 @@ on:
     paths:
       - 'scripts/study_horizontal_bed_fine_mesh_512.py'
       - 'scripts/study_case_B_no_target_leak_512.py'
+      - 'scripts/report_m2_physical_validation_readiness.py'
+      - 'tests/test_m2_physical_validation_readiness.py'
       - 'scripts/plot_case_B_fine_mesh_evidence.py'
       - 'tests/test_m2_no_target_leak_grid.py'
       - 'scripts/exploratory_forward_horizontal_bed.py'
@@ -24,13 +26,15 @@ jobs:
       - name: Install reproducible numerical dependencies
         run: python -m pip install -e ".[physics,test]"
       - name: Independently verify analytically solvable heat exchange and validation gates
-        run: python -m pytest tests/test_m2_fine_mesh_analytic.py -v
+        run: python -m pytest tests/test_m2_fine_mesh_analytic.py tests/test_m2_physical_validation_readiness.py -v
       - name: Download original 2024 experimental runs and verify Case B SHA-256
         run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
       - name: Source-locked Case B spatial refinement on 64/128/256/512 cells
         run: python scripts/study_horizontal_bed_fine_mesh_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_fine_mesh_512.json
       - name: Run target-independent exhaust-flow 32/64/128/256/512 mesh study
         run: python scripts/study_case_B_no_target_leak_512.py --input-dir results/external_horizontal_bed --output results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json
+      - name: Preserve machine-readable physical validation STOP gate independently from mesh passes
+        run: python scripts/report_m2_physical_validation_readiness.py --historic results/external_horizontal_bed/case_B_fine_mesh_512.json --target-independent results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json --output results/external_horizontal_bed/physical_validation_readiness.json
       - name: Install plotting dependencies and render source-identified scientific figures
         run: |
           python -m pip install "matplotlib>=3.8"
@@ -43,6 +47,7 @@ jobs:
           path: |
             results/external_horizontal_bed/case_B_fine_mesh_512.json
             results/external_horizontal_bed/case_B_no_target_leak_512_mesh.json
+            results/external_horizontal_bed/physical_validation_readiness.json
             results/external_horizontal_bed/fine_mesh_figures/*.png
             results/external_horizontal_bed/provenance.json
           if-no-files-found: error
