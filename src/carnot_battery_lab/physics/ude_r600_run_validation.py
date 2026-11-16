@@ -57,6 +57,8 @@ class RunSummary:
     motor_power_channel_parseable_rows:int
     fluid_label_stated_in_filename:bool
     refrigerant_text_unique:list[str]
+    logger_refrigerant_setting_matches_nbutane_filename:bool
+    source_working_fluid_independently_instrument_verified:bool
     samples_with_all_required_channels:int
     measured_pressure_suction_bar_a:dict
     measured_pressure_discharge_bar_a:dict
@@ -128,6 +130,12 @@ def read_original_bitzer_run(source:bytes,*,filename:str,run_id:str)->RunSummary
         motor_power_channel_parseable_rows=motor_parse,
         fluid_label_stated_in_filename=True,
         refrigerant_text_unique=sorted(fluid_names)[:12],
+        logger_refrigerant_setting_matches_nbutane_filename=bool(
+            fluid_names and all(("butan" in label.casefold() or
+                                 label.casefold().strip()=="r600")
+                                 for label in fluid_names)),
+        # Controller menu text is NOT an independent chemical/fluid assay.
+        source_working_fluid_independently_instrument_verified=False,
         samples_with_all_required_channels=complete,
         measured_pressure_suction_bar_a=_distribution(values[
             "Low pressure [bar(a)]"]),
@@ -219,7 +227,14 @@ def audit_original_ude_archive(raw:bytes,expected_md5:str=UDE_MD5)->dict:
         "scientific_status":"VERIFIED_NBUTANE_THREE_RUN_SENSOR_AUDIT_NO_IN_ENVELOPE_VALIDATION",
         "doi":DOI,"published_archive_md5":expected_md5,
         "download_sha256":sha256(raw).hexdigest(),
-        "independent_original_R600_run_count":len(findings),
+        "source_filename_labeled_nbutane_run_count":len(findings),
+        "logger_setting_compatible_nbutane_run_count":sum(
+            r.logger_refrigerant_setting_matches_nbutane_filename
+            for r in findings),
+        "logged_refrigerant_identity_conflict_detected":any(
+            not r.logger_refrigerant_setting_matches_nbutane_filename
+            for r in findings),
+        "original_file_label_not_independent_fluid_verification":True,
         "raw_correlated_time_sample_count_not_independent":total,
         "experimental_run_ids":list(EXPECTED_RUN_IDS),
         "run_sensor_aggregate_only":runs,
@@ -227,7 +242,10 @@ def audit_original_ude_archive(raw:bytes,expected_md5:str=UDE_MD5)->dict:
         "independent_runs_required_for_preregistered_envelope_gate":
             MIN_INDEPENDENT_RUNS_FOR_IN_ENVELOPE,
         "minimum_independent_run_count_gate_passed":
-            len(findings)>=MIN_INDEPENDENT_RUNS_FOR_IN_ENVELOPE,
+            len(findings)>=MIN_INDEPENDENT_RUNS_FOR_IN_ENVELOPE
+            and all(r.logger_refrigerant_setting_matches_nbutane_filename
+                    for r in findings)
+            and all(r.positive_motor_channel_rows>0 for r in findings),
         "all_reserved_runs_have_3D_support":
             all(q["3D_holdout_centroid_in_training_two_run_line_segment"] for q in grouped),
         "original_OST_M1_7_holdouts_must_remain_unchanged":True,
