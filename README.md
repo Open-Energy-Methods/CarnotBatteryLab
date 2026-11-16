@@ -183,6 +183,14 @@ A source-locked replay of the 2024 copper-slag packed-bed Case B now extends the
 
 [Complete 512-cell methods and physical validation gaps](docs/methods/M2_512_CELL_NUMERICAL_VS_PHYSICAL_VALIDATION.md). The [dedicated reproducible GitHub Actions workflow](.github/workflows/m2-fine-mesh-case-b.yml) archives two Case B numerical JSON outputs, source hashes and three figures. **Physical predictive validation and scientific v1.0 remain blocked.**
 
+## M2 512-cell numerical convergence — experimental validation remains blocked
+
+The **source-locked Case B** historical packed-bed study now extends 8→16→32→64→128→256→512 cells. The finest 256→512 refinement changes the full outlet-temperature trajectory by **0.448 K RMS** and the model's 80°C crossing by **7.87 s**, meeting the existing prospective 1 K / 15 s *numerical* resolution criteria for this prescribed case. However, the model's disagreement with the actual experiment is still severe (**44.0°C RMSE at 512 cells**), and the historical flow estimate depends on measured outlet temperature. **Neither experimental thermal breakthrough nor pressure drop is independently validated.**
+
+The separate experimental readiness report intentionally fails until independently evidenced exhaust pipe bore, calibrated velocity and pressure instrumentation, pipe/tap losses, thermocouple coordinates/uncertainty and material parameters are supplied. A newer target-independent flow-coupling variant exists but has not undergone this same 512-cell spatial study.
+
+[Read the full seven-mesh evidence and physical-validation STOP gate](docs/methods/M2_512_CELL_VALIDATION_GATE.md). **M1, M2 and scientific v1.0 remain open.**
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
