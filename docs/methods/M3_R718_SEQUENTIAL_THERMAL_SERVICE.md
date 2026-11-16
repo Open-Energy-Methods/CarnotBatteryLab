@@ -26,6 +26,19 @@ These are model gas-temperature grades, **not** a physically modelled water/proc
 - If the heat-pump charging run is incomplete/infeasible, **discharge is blocked**; it must not reuse partial storage as though a valid charged-state service contract had been fulfilled.
 - A numerical qualified-temperature count is NOT a matched process heat service contract: no manufacturer-validated compressor maps, process-side HX, demand/dispatch profile, cyclic steady terminal state or storage-output uncertainty budget.
 
+## First source-controlled real-fluid CI result: negative useful-service finding
+
+Workflow run **43851034809** completed (4/4 integration checks passed). The model-coupled R718 charging stage completed under the **numerical** illustrative R718 cycle, and the exact resulting stored gas/rock temperature arrays were reused for the two reverse-flow discharge contracts, without changing storage initial conditions between cases.
+
+| Requested gas thermal service | Model gas sensible gain across discharge | Qualified heat reaching required temperature | Discharge energy ledger residual |
+|---|---:|---:|---:|
+| 80→110°C | +105.162 MJ | **0 MJ** | +1.92×10⁻⁶ J |
+| 110→150°C original target | **−30.479 MJ** | **0 MJ** | −2.92×10⁻⁶ J |
+
+This is an important, physically intuitive negative finding. In the second case the modelled bed is too cold even to heat the **110°C return gas**, so the latter cools into the bed: a negative sensible heat gain is not useful TES discharge and must never be silently clipped to a positive service-delivery figure. In the first case the gas does pick up heat from the bed, but the outlet remains below the requested 110°C grade at the declared start/mean/end sampling checks, so all positive heat is classified as **unqualified lower-grade heat**.
+
+Internal energy balances close to near floating-point precision, but **neither contract supplies matched-service useful heat**. This is a sequential transient thermodynamic model, without equipment-qualified R718 compression for the exact 80°C-source case, a process-side heat exchanger, measured material or hydraulic calibration, or cyclic terminal-state closure. Do not infer a positive RTE, economic savings, or industrial service provision from these results.
+
 ## Reproduction
 
 `python -m pytest tests/test_m3_r718_sequential_service.py -v`
