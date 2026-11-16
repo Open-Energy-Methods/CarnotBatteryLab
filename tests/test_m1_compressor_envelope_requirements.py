@@ -51,7 +51,7 @@ def test_invalid_demand_capacity_inputs_fail(kwargs):
 def test_all_published_points_stay_fail_closed_and_missing_fields_are_visible():
     registry=evidence_crosswalk()
     assert registry["target"]==TARGET
-    assert len(registry["records"])==6
+    assert len(registry["records"])==8
     assert all(row["measured_exact_target_compressor_map_qualified"] is False
                for row in registry["records"])
     assert all(len(row["qualification_missing"])==len(REQUIRED_MAP_FIELDS)
@@ -66,6 +66,22 @@ def test_all_published_points_stay_fail_closed_and_missing_fields_are_visible():
         "refrigerant_evaporation_incompatible_with_80C_inlet"] is True
     assert by_id["verdnik_rieberer_2022_r600_experiment"][
         "reported_single_unit_capacity_below_1MW"] is True
+    # Commercial steam product is not an 80C inlet machine or 110->150C
+    # liquid process unit. Supplier publication explicitly lacks third-party
+    # validation; never count a rated 624kW/165C steam point as H-REF pass.
+    commercial=by_id["kobelco_sgh165_annex58_supplier_reported_commercial"]
+    assert commercial["natural_refrigerant"] is False
+    assert commercial["source_inlet_C"]==70.
+    assert commercial["source_outlet_C"]==65.
+    assert commercial["sink_supply_C"]==165.
+    assert commercial["reported_single_unit_capacity_below_1MW"] is True
+    assert commercial["measured_exact_target_compressor_map_qualified"] is False
+    assert commercial["explicitly_different_or_insufficient_boundaries"][
+        "source_inlet_C"]["target_C"]==80.
+    demo=by_id["futraheat_2026_brewery_supplier_reported_demonstration"]
+    assert demo["source_inlet_C"]==100.
+    assert demo["sink_supply_C"]==130.
+    assert demo["technical_applicability"]=="DIFFERENT_OR_UNREPORTED_TARGET_BOUNDARIES"
 
 
 def test_an_exact_single_point_still_does_not_prove_multidimensional_map():
