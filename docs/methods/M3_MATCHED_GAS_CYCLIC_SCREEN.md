@@ -29,7 +29,15 @@ For each candidate fixed schedule:
 - Demand **two consecutive** closed start/end full-field temperature cycles within the declared 0.25 K maximum absolute cellwise difference. Equality of bulk energy alone cannot satisfy this.
 - Require the full sampled temperature and power grade in both of those same final cycles. A single grade-passing interval or an unconverged one-time discharge is not matched thermal service.
 
-The bounded illustrative scan uses **2 and 4** HP charging steps (120 s each), **2** discharge steps (60 s each), and **3 successive** no-reset cycles. This tiny schedule grid proves neither global feasibility nor global impossibility. It is deliberately not an unconstrained optimizer, and it holds the proposed compressor envelope assumptions unchanged.
+The bounded illustrative scan uses **2, 4, 8, 16 and 32** HP charging steps (120 s each), **2** discharge steps (60 s each), and **3 successive** no-reset cycles. This tiny schedule grid proves neither global feasibility nor global impossibility. It is deliberately not an unconstrained optimizer, and it holds the proposed compressor envelope assumptions unchanged.
+
+## M3.3 — breakthrough and charging-envelope diagnosis
+
+The extended charge-horizon sweep reports the physical discharge-outlet fluid temperature at the beginning of reverse flow, `T_fluid(x=0, charge end)`. **For an immediately qualifying full gas-delivery interval, this temperature must be at least 423.15 K (150°C)**, because it is the very first outlet sample. The positive deficit `max(0, 423.15 K − T_fluid(x=0))` is a model-diagnostic **necessary-condition shortfall**, not a material property fit, universal theoretical impossibility, or proven manufacturer compressor operating limit.
+
+For each completed cycle, the artifact additionally provides the maximum rock temperature, final charging hot-gas supply, condenser saturation temperature, maximum nominal R718 stage ratio, and full-field start/end drift. Distinguish **failure to charge the physical hot end**, **failure to sustain outlet grade and 1 MW duty during discharge**, **cycle-state nonclosure**, and **any R718/HX charging termination**. Do not increase the stage pressure-ratio guard to force a positive result; its 5:1 value is already a nominal screening assumption, not a verified compressor map.
+
+Longer charging may pass a single-temperature necessary condition yet fail the full duty or cyclic match. Even a model-only numerical match would not resolve the original process-liquid HX and physical equipment-qualification gates.
 
 ## Scientific release gates remain blocked
 
