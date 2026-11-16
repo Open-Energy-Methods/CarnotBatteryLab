@@ -179,6 +179,15 @@ class CompressorMap:
             raise ValueError("fewer than three independent map fitting points")
         if len([x for x in self.points if x.role=="holdout"])<2:
             raise ValueError("fewer than two independent holdout points")
+        # Repeat observations at a fitting coordinate can measure repeatability,
+        # but cannot establish interpolation accuracy at withheld coordinates.
+        fit_coords={(x.speed_rpm,*_coordinate_tuple(x))
+                    for x in self.points if x.role=="fit"}
+        holdout_coords=[(x.speed_rpm,*_coordinate_tuple(x))
+                        for x in self.points if x.role=="holdout"]
+        if len(set(holdout_coords))!=len(holdout_coords) or any(
+                q in fit_coords for q in holdout_coords):
+            raise ValueError("holdouts must be unique coordinates excluded from FIT")
         rated=self.rated_limits
         for x in self.points:
             if (not rated.minimum_speed_rpm<=x.speed_rpm<=rated.maximum_speed_rpm
