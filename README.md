@@ -183,6 +183,14 @@ A source-locked replay of the 2024 copper-slag packed-bed Case B now extends the
 
 [Complete 512-cell methods and physical validation gaps](docs/methods/M2_512_CELL_NUMERICAL_VS_PHYSICAL_VALIDATION.md). The [dedicated reproducible GitHub Actions workflow](.github/workflows/m2-fine-mesh-case-b.yml) archives two Case B numerical JSON outputs, source hashes and three figures. **Physical predictive validation and scientific v1.0 remain blocked.**
 
+## M2 original instrument source and mixed-phase thermocouple diagnostic
+
+The original 2022 horizontal copper-slag rig methods explicitly state that seven Type-K thermocouple **sheaths contact both stones and air** (50 mm axial spacing). Comparing measured T1–T7 to **gas-only** or **solid-only** model temperatures is therefore not independently justified. The same methods locate pressure taps in inlet/outlet **pipes**, connected through stainless capillaries and 8 mm silicone tubing, with a Campbell Scientific CR1000 logger and Kanomax outlet hot-wire flow probe. The available 2024 data do **not** establish its raw ΔP channel units, calibration, true anemometer pipe bore or exact absolute TC locations.
+
+New [source and instrument evidence](docs/methods/M2_MIXED_PHASE_SENSOR_EVIDENCE.md) and [source-hashed Case B T1–T7 observation operator](src/carnot_battery_lab/validation/sensor_phase_envelopes.py) evaluate a deliberately broad **phase/possible-position model-extrema interval**, without fitting any sensor offset or gas–rock mixture to observations. It is an exploratory diagnostic **NOT a measurement uncertainty interval or experimental validation**. The first source TCs are already used to initialise the model (assumed 0.05–0.35 m locations), so that sample is never scored. C/D remain untouched by model fitting.
+
+The original public data provider lists an author contact for additional experiment metadata. A [specific author information request](docs/validation/REQUEST_HORIZONTAL_BED_INSTRUMENT_METADATA.md) is prepared **but has not been sent**. Source-qualified gas-flow and pressure instrument calibration, sensor response and actual material properties remain the M2 external-validation blockers.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
