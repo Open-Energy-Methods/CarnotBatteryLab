@@ -74,6 +74,7 @@ def _archive(*,change_run=None,append_bad_path=None):
     return f.getvalue()
 
 def test_three_runs_and_time_samples_are_not_independent():
+    pytest.importorskip("CoolProp")
     raw=_archive()
     out=audit_original_ude_archive(raw,expected_md5=md5(raw).hexdigest())
     assert out["source_filename_labeled_nbutane_run_count"]==3
@@ -158,6 +159,8 @@ def test_inconsistent_csv_row_width_fails_source_contract():
         read_original_bitzer_run(raw,filename=NAMES[0],run_id="026")
 
 def test_predeclared_six_experiment_holdout_uses_electrical_meter_not_source_fit():
+    pytest.importorskip("CoolProp")
+    pytest.importorskip("scipy")
     from carnot_battery_lab.physics.ude_r600_processed_means import (
         audit_processed_experiment_summaries,
     )
