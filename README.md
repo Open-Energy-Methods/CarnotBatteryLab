@@ -240,6 +240,12 @@ A reproducible real-fluid dossier now exports required **suction pressure, tempe
 
 See [M1.4 map-requirements methodology and sourcing](docs/methods/M1_4_COMPRESSOR_OPERATING_REQUIREMENTS.md). No compressor or process-side heat exchanger is certified; architecture ranking remains blocked.
 
+### M1.5 measured compressor-map acceptance — fail-closed evidence screening
+
+The M1.4 real-fluid operating demands can now be tested against separately supplied, machine-specific **measured compressor maps**, when available, without inventing missing data. M1.5 requires stage and topology identity, declared machine pressure/speed/thermal limits, a fixed-speed *measured interior* for every operating point, independent withheld map tests, and separate validation of flow, power and discharge-temperature predictions. The default CI intentionally supplies **no actual map** and publishes the negative result. Synthetic fixture success proves only the numerical acceptance algorithm, **not hardware suitability**. Physical map authentication, full R718 charge trajectories, startup/control/surge and 1 MW liquid process heat still require independent evidence.
+
+See [M1.5 map acceptance methodology](docs/methods/M1_5_MEASURED_MAP_ACCEPTANCE.md).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
