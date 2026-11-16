@@ -35,7 +35,7 @@ def main():
         process_return_K=383.15,required_supply_K=423.15,
         reverse_mass_flow_kg_s=25.,dt_s=60.,requested_steps=2)
     protocol=MatchedThermalProtocol(
-        charge_step_counts=(2,4),discharge_step_counts=(2,),
+        charge_step_counts=(2,4,8,16,32),discharge_step_counts=(2,),
         repeat_cycles=3,nominal_process_duty_W=1_000_000.,
         terminal_max_abs_difference_K=.25)
     screening=scan_matched_thermal_schedules(
@@ -64,10 +64,23 @@ def main():
     args.output.write_text(json.dumps(report,sort_keys=True,indent=2)+"\n")
     print("M3_2_REPRODUCIBLE_GAS_SCREEN",screening["status"])
     for key,value in screening["candidates"].items():
-        print(key,value["status"],"completed_cycles",
-              sum(row["status"]=="NUMERICAL_CYCLE_COMPLETED"
-                  for row in value["cycles"]),
-              "model_only_thermal_match",value["model_only_matched_gas_thermal_screen"])
+        good=[row for row in value["cycles"]
+              if row["status"]=="NUMERICAL_CYCLE_COMPLETED"]
+        first=good[0] if good else None
+        print(key,value["status"],"completed_cycles",len(good),
+              "model_only_thermal_match",value["model_only_matched_gas_thermal_screen"],
+              "first_post_charge_process_outlet_C",
+              round(first["first_discharge_outlet_before_flow_K"]-273.15,3)
+                  if first else None,
+              "first_initial_grade_deficit_K",
+              round(first["initial_outlet_temperature_deficit_K"],3)
+                  if first else None,
+              "first_terminal_field_error_K",
+              round(first["max_terminal_field_difference_K"],3)
+                  if first else None,
+              "first_charge_compressor_ratio_guard",
+              round(first["max_nominal_R718_stage_pressure_ratio_across_charge"],3)
+                  if first else None)
     print("HARDWARE_QUALIFIED=False; PHYSICAL_VALIDATION=False; RTE=None")
 
 
