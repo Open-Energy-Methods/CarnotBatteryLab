@@ -101,7 +101,7 @@ def sensor_phase_position_envelope(
     i0=max(0,min(len(gas_C)-1,int(math.floor(lo/dz-1e-12))))
     i1=max(i0,min(len(gas_C)-1,int(math.floor(hi/dz+1e-12))))
     touched=tuple(range(i0,i1+1))
-    values=[gas_C[i] for i in touched]+[solid_C[i] for i in touched]
+    values=[float(gas_C[i]) for i in touched]+[float(solid_C[i]) for i in touched]
     return PhasePositionEnvelope(
         sensor_label=f"T{sensor_index+1}",
         axial_possible_m=(lo,hi),
@@ -115,8 +115,8 @@ def envelope_exceedance_C(measured_C:float,envelope:PhasePositionEnvelope)->floa
     """Nonnegative outside-band distance, NOT observation uncertainty."""
     if not math.isfinite(measured_C):
         raise ValueError("measured thermocouple value must be finite")
-    return max(envelope.lower_model_temperature_C-measured_C,
-               measured_C-envelope.upper_model_temperature_C,0.)
+    return float(max(envelope.lower_model_temperature_C-measured_C,
+                     measured_C-envelope.upper_model_temperature_C,0.))
 
 
 def diagnostic_summary(samples:Sequence[tuple[float,PhasePositionEnvelope]])->dict:
@@ -125,12 +125,13 @@ def diagnostic_summary(samples:Sequence[tuple[float,PhasePositionEnvelope]])->di
         raise ValueError("at least one source measurement and predicted envelope required")
     if any(x.sensor_label!=samples[0][1].sensor_label for _,x in samples):
         raise ValueError("cannot aggregate different thermocouples")
-    exceeds=[envelope_exceedance_C(y,e) for y,e in samples]
+    exceeds=[float(envelope_exceedance_C(y,e)) for y,e in samples]
+    outside_count=sum(1 for x in exceeds if x>0)
     return {
         "sensor":samples[0][1].sensor_label,
         "comparisons":len(exceeds),
-        "outside_model_extrema_count":sum(x>0 for x in exceeds),
-        "outside_model_extrema_fraction":sum(x>0 for x in exceeds)/len(exceeds),
+        "outside_model_extrema_count":outside_count,
+        "outside_model_extrema_fraction":outside_count/len(exceeds),
         "mean_outside_distance_C":sum(exceeds)/len(exceeds),
         "maximum_outside_distance_C":max(exceeds),
         "not_a_measurement_uncertainty_interval":True,
