@@ -27,6 +27,12 @@ def test_target_source_and_process_heat_capacity_requirements():
     assert source_and_process_requirements(
         q_source_W=1_060_000.,process_duty_W=1e6)[
         "source_heat_below_assumed_cap"] is False
+    unknown=source_and_process_requirements(
+        q_source_W=1e6,process_duty_W=1e6,
+        assumed_max_source_flow_kg_s=None)
+    assert unknown["source_heat_below_assumed_cap"] is None
+    assert unknown["source_heat_available_at_assumed_cap_W"] is None
+    assert unknown["assumed_source_flow_cap_kg_s"] is None
 
 
 @pytest.mark.parametrize("kwargs",[
@@ -136,6 +142,9 @@ def test_r718_1mw_full_compressor_stage_requirements_and_trajectory():
     assert len(traj["points"])==2
     assert all(len(x["compressor_stages"])==2 for x in traj["points"])
     assert traj["entire_requested_trajectory_qualified"] is False
+    for step,model_step in zip(traj["points"],charge.steps):
+        assert step["compressor_electric_W_with_assumed_drive_losses"]==pytest.approx(
+            model_step.compressor_electric_W,rel=1e-7)
 
 
 def test_r600_screen_requirements_remain_unqualified_and_consistent():
