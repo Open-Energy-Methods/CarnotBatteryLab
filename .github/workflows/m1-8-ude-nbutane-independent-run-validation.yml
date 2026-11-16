@@ -57,6 +57,13 @@ jobs:
           assert u["raw_correlated_time_sample_count_not_independent"]==6839
           p=u["processed_six_r600_original_measured_experiment_summaries"]
           assert p["candidate_original_pure_nbutane_record_count"]==6
+          assert p["pure_nbutane_measured_EOS_eligible_points"]==6
+          assert abs(p["isentropic_efficiency_recomputed_from_shared_source_measurements"]["mean"]-.4445350734379265)<2e-4
+          assert abs(p["reference_M1_7_0_68894_electrical_eta_absolute_error_mean"]-.24440492656207352)<2e-4
+          cv=p["experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation"]
+          assert cv["eligible"] and cv["N"]==6
+          assert cv["same_frequency_in_training_hull_N"]==0
+          assert not cv["in_domain_predictive_accuracy_established"]
           assert not p["raw_individual_points_exposed"]
           assert not p["original_1MW_H_REF_hardware_map_qualified"]
           assert u["logger_setting_compatible_nbutane_run_count"]==0
