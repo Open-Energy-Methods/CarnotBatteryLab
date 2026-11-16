@@ -1,6 +1,7 @@
 """NIST-source air enthalpy consistency and variable-cp wall energy closure."""
 from math import pi
 import pytest
+pytest.importorskip("scipy",reason="nonlinear enthalpy-wall solver requires physics optional deps")
 from carnot_battery_lab.physics.ideal_dry_air import (
     air_cp_J_kgK,air_sensible_enthalpy_J_kg,
     air_mu_sutherland_Pa_s,air_k_powerlaw_W_mK)
