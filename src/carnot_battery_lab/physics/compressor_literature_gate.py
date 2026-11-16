@@ -53,7 +53,9 @@ class PublishedHardwareEvidence:
         if self.evidence_class not in (
             "EXPERIMENTAL_POINT",
             "EXPERIMENTAL_REPORTED_MAXIMA",
-            "MODEL_PREDICTION"):
+            "MODEL_PREDICTION",
+            "SUPPLIER_PRODUCT_DATA",
+            "SUPPLIER_REPORTED_FIELD_DEMO"):
             raise ValueError("unrecognized literature evidence class")
         if not self.id or not self.url.startswith("https://"):
             raise ValueError("source record needs verifiable provenance")
@@ -113,6 +115,31 @@ LITERATURE=(
         sink_supply_C=148.5,heating_output_kW=38.6,
         topology="variable-speed piston with external subcooler",
         important_limitations="50 experimental points; published peak 148.5C/38.6kW is not 1MW and not natural"),
+    PublishedHardwareEvidence(
+        id="kobelco_sgh165_annex58_supplier_reported_commercial",
+        url="https://heatpumpingtechnologies.org/annex58/wp-content/uploads/sites/70/2022/07/technologykobelcosgh165.pdf",
+        refrigerant="R245fa/R134a heat pump + R718 steam booster",
+        natural_refrigerant=False,
+        evidence_class="SUPPLIER_PRODUCT_DATA",
+        source_inlet_C=70.,source_outlet_C=65.,
+        sink_supply_C=165.,heating_output_kW=624.,
+        topology="economizer + IHX refrigerant heat pump, 115C pressurized water, "
+                 "flash steam then water-injected twin-screw R718 steam compressor",
+        important_limitations="Supplier data without third-party verification; source maximum 70C, "
+            "20C feedwater to 165C steam not 110-to-150C process LIQUID, "
+            "624kW per unit; vendor has no model-grade exact-target map"),
+    PublishedHardwareEvidence(
+        id="futraheat_2026_brewery_supplier_reported_demonstration",
+        url="https://www.acrjournal.uk/heat-pumps/how-a-new-type-of-heat-pump-is-helping-hepworth-brewery/",
+        refrigerant="R1233zd(E) HFO field demonstration",
+        natural_refrigerant=False,
+        evidence_class="SUPPLIER_REPORTED_FIELD_DEMO",
+        source_inlet_C=100.,sink_supply_C=130.,
+        maximum_reported_sink_C=130.,heating_output_kW=300.,
+        topology="oil-free TurboClaw heat pump, waste vapour to process steam",
+        important_limitations="100C waste vapour and 120-130C steam; "
+            "300kW is unit rating, no measured 80-to-70C liquid-source map, "
+            "not independently verified in the supplier-based public article"),
     PublishedHardwareEvidence(
         id="wu_2019_r718_injected_screw",
         url="https://doi.org/10.1016/j.energy.2019.116427",
