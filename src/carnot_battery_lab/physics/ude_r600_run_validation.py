@@ -237,7 +237,7 @@ def audit_original_ude_archive(raw:bytes,expected_md5:str=UDE_MD5)->dict:
         })
     total=sum(r.csv_record_count for r in findings)
     return {
-        "scientific_status":"VERIFIED_NBUTANE_THREE_RUN_SENSOR_AUDIT_NO_IN_ENVELOPE_VALIDATION",
+        "scientific_status":"SIX_UDE_BUTANE_MEASURED_SUMMARY_EXPERIMENTS_AND_THREE_SPARSE_CONTROLLER_LOGS_NO_IN_DOMAIN_VALIDATION",
         "doi":DOI,"published_archive_md5":expected_md5,
         "download_sha256":sha256(raw).hexdigest(),
         "source_filename_labeled_nbutane_run_count":len(findings),
@@ -251,6 +251,11 @@ def audit_original_ude_archive(raw:bytes,expected_md5:str=UDE_MD5)->dict:
         "raw_correlated_time_sample_count_not_independent":total,
         "experimental_run_ids":list(EXPECTED_RUN_IDS),
         "processed_six_r600_original_measured_experiment_summaries":processed,
+        "processed_pure_nbutane_experiment_summaries_count_gate_ge_5":(
+            processed["pure_nbutane_measured_EOS_eligible_points"]>=5),
+        "processed_pure_nbutane_heldout_same_frequency_hull_coverage_count":
+            processed["experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation"][
+                "same_frequency_in_training_hull_N"],
         "separate_raw_bitzer_log_run_count_not_entire_R600_dataset":len(findings),
         "run_sensor_aggregate_only":runs,
         "leave_one_ENTIRE_run_out_support_checks":grouped,
