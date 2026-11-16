@@ -93,6 +93,18 @@ def test_exact_repeated_R718_handoff_is_fail_closed_for_original_grade():
             assert row["charge_electricity_J_partial_aux"]>0.
             assert row["sampled_discharge_intervals"][0][
                 "first_process_gas_out_K"]>0.
+            assert row["first_discharge_outlet_before_flow_K"]==pytest.approx(
+                row["post_charge_bed_state"]["fluid_temperature_K"][0])
+            assert row["sampled_discharge_intervals"][0][
+                "first_process_gas_out_K"]==pytest.approx(
+                row["first_discharge_outlet_before_flow_K"])
+            assert row["initial_outlet_temperature_deficit_K"]==pytest.approx(
+                max(0.,423.15-row["first_discharge_outlet_before_flow_K"]))
+            if row["process_service_pass"]:
+                assert row["initial_outlet_grade_necessary_condition"] is True
+            assert row["last_charge_hot_gas_supply_K"]>0.
+            assert row["last_charge_condenser_saturation_K"]>0.
+            assert row["max_nominal_R718_stage_pressure_ratio_across_charge"]>1.
     # Existing cold/short path does not establish a full matched contract.
     # Even if a later model-only path passes, hardware status must stay False.
     assert candidate["status"]!="VALIDATED_CARNOT_BATTERY"

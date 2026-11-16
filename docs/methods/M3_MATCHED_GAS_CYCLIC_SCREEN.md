@@ -29,7 +29,29 @@ For each candidate fixed schedule:
 - Demand **two consecutive** closed start/end full-field temperature cycles within the declared 0.25 K maximum absolute cellwise difference. Equality of bulk energy alone cannot satisfy this.
 - Require the full sampled temperature and power grade in both of those same final cycles. A single grade-passing interval or an unconverged one-time discharge is not matched thermal service.
 
-The bounded illustrative scan uses **2 and 4** HP charging steps (120 s each), **2** discharge steps (60 s each), and **3 successive** no-reset cycles. This tiny schedule grid proves neither global feasibility nor global impossibility. It is deliberately not an unconstrained optimizer, and it holds the proposed compressor envelope assumptions unchanged.
+The bounded illustrative scan uses **2, 4, 8, 16 and 32** HP charging steps (120 s each), **2** discharge steps (60 s each), and **3 successive** no-reset cycles. This tiny schedule grid proves neither global feasibility nor global impossibility. It is deliberately not an unconstrained optimizer, and it holds the proposed compressor envelope assumptions unchanged.
+
+## M3.3 — breakthrough and charging-envelope diagnosis
+
+The extended charge-horizon sweep reports the physical discharge-outlet fluid temperature at the beginning of reverse flow, `T_fluid(x=0, charge end)`. **For an immediately qualifying full gas-delivery interval, this temperature must be at least 423.15 K (150°C)**, because it is the very first outlet sample. The positive deficit `max(0, 423.15 K − T_fluid(x=0))` is a model-diagnostic **necessary-condition shortfall**, not a material property fit, universal theoretical impossibility, or proven manufacturer compressor operating limit.
+
+For each completed cycle, the artifact additionally provides the maximum rock temperature, final charging hot-gas supply, condenser saturation temperature, maximum nominal R718 stage ratio, and full-field start/end drift. Distinguish **failure to charge the physical hot end**, **failure to sustain outlet grade and 1 MW duty during discharge**, **cycle-state nonclosure**, and **any R718/HX charging termination**. Do not increase the stage pressure-ratio guard to force a positive result; its 5:1 value is already a nominal screening assumption, not a verified compressor map.
+
+### Source-controlled five-schedule finding (run 43861871728)
+
+| Charge duration per cycle | First post-charge physical process outlet, cycle 1 | Shortfall below 150°C | Three-cycle result |
+|---|---:|---:|---|
+| 2 × 120 s (4 min) | 114.399°C | 35.601 K | Grade/duty and full-field closure failed |
+| 4 × 120 s (8 min) | 120.144°C | 29.856 K | Grade/duty and full-field closure failed |
+| 8 × 120 s (16 min) | 127.466°C | 22.534 K | Grade/duty and full-field closure failed |
+| 16 × 120 s (32 min) | 135.224°C | 14.776 K | One complete cycle; second-cycle charging blocked |
+| 32 × 120 s (64 min) | Not reached | Not defined | First-cycle charging blocked |
+
+The numerical **charging termination**, not experimental compressor malfunction, is an assumed upper-temperature guard: for 16 steps on cycle 2, the model predicts **350.2°C discharge**; for 32 steps on cycle 1 it predicts **351.8°C discharge**, each exceeding the input `max_discharge_C=350°C`. These are hypothetical model limits and must not be described as a manufacturer's certified maximum. None of the tested schedules established both consecutive-cycle thermal closure and 110→150°C gas delivery.
+
+The longer-charge results do not establish that the original liquid-process contract is physically impossible. They instead identify a **specific configuration and control-envelope obstacle** that must be addressed by independently supported equipment topology/maps and appropriate source/sink process modelling. Do **not** simply raise the 350°C/5:1 screening guards to obtain a desired positive result.
+
+Longer charging may pass a single-temperature necessary condition yet fail the full duty or cyclic match. Even a model-only numerical match would not resolve the original process-liquid HX and physical equipment-qualification gates.
 
 ## Scientific release gates remain blocked
 
