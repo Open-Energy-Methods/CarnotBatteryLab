@@ -19,6 +19,7 @@ from statistics import mean
 from importlib.metadata import version
 
 from run_case_B_no_target_leak import evaluate_case_B
+from carnot_battery_lab.validation.internal_field_convergence import assess_internal_field_refinement
 
 MESHES=(32,64,128,256,512)
 EXPERIMENT_SOURCE_SHA="5f7e6143cfb3f6e2efa2bb6a6b4061e10fe44591588f7e3b7216fa34ff6d47ab"
@@ -89,6 +90,7 @@ def run(input_dir:Path)->dict:
             raise ValueError("target leakage detected in numerical solver")
         runs[n]=r
     refinement=assess(runs)
+    internal_fields=assess_internal_field_refinement(runs)
     return {
         "status":"CASE_B_TARGET_INDEPENDENT_EXHAUST_FORCING_SPATIAL_SCREEN_UNVALIDATED",
         "source_doi":"10.17632/j37x6ptpk2.1",
@@ -121,9 +123,13 @@ def run(input_dir:Path)->dict:
                 "max_relative_flow_fixed_point_residual":runs[n]["flow_implicit_convergence_max_rel"],
                 "mean_flow_iterations":runs[n]["flow_implicit_mean_iterations"],
                 "max_absolute_step_energy_residual_J":runs[n]["internal_energy_residual_max_absolute_J"],
+                "fixed_model_positions_m":runs[n]["internal_sample_positions_m"],
+                "gas_K_fixed_positions":runs[n]["internal_sampled_gas_K"],
+                "rock_K_fixed_positions":runs[n]["internal_sampled_rock_K"],
             } for n in MESHES
         },
         "refinement":refinement,
+        "internal_two_phase_refinement":internal_fields,
     }
 
 
@@ -149,6 +155,13 @@ def main():
               f"crossing_shift_s={item['first_80C_breakthrough_shift_s']}")
     print("NO_TARGET_LEAK_NUMERICAL_SCREEN_PASS",
           result["refinement"]["provisional_spatial_screen_pass"])
+    internal=result["internal_two_phase_refinement"]
+    for pair,item in internal["mesh_pairs"].items():
+        print("INTERNAL_PHASE_REFINEMENT",pair,
+              f"gas_max_RMS_K={item['gas']['max_RMS_across_positions_K']:.5f}",
+              f"rock_max_RMS_K={item['rock']['max_RMS_across_positions_K']:.5f}")
+    print("INTERNAL_FIELD_1K_SCREEN",
+          internal["prospective_internal_increment_screen_1K_all_positions"])
     print("EXPERIMENTAL_PREDICTIVE_VALIDATION_PASS False")
 
 
