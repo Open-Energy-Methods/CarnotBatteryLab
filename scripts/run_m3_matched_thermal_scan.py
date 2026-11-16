@@ -67,6 +67,8 @@ def main():
         good=[row for row in value["cycles"]
               if row["status"]=="NUMERICAL_CYCLE_COMPLETED"]
         first=good[0] if good else None
+        blocked=next((row for row in value["cycles"]
+                      if row["status"]!="NUMERICAL_CYCLE_COMPLETED"),None)
         print(key,value["status"],"completed_cycles",len(good),
               "model_only_thermal_match",value["model_only_matched_gas_thermal_screen"],
               "first_post_charge_process_outlet_C",
@@ -80,7 +82,10 @@ def main():
                   if first else None,
               "first_charge_compressor_ratio_guard",
               round(first["max_nominal_R718_stage_pressure_ratio_across_charge"],3)
-                  if first else None)
+                  if first else None,
+              "blocked_cycle",blocked["cycle"] if blocked else None,
+              "charging_termination_reason",
+              blocked.get("termination_reason") if blocked else None)
     print("HARDWARE_QUALIFIED=False; PHYSICAL_VALIDATION=False; RTE=None")
 
 
