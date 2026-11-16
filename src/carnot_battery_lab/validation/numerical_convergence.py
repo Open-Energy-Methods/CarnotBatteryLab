@@ -18,6 +18,7 @@ class ResolutionEvidenceError(ValueError):
 PAIR_KEYS=[
     "grid_08_to_grid_16","grid_16_to_grid_32",
     "grid_32_to_grid_64","grid_64_to_grid_128",
+    "grid_128_to_grid_256","grid_256_to_grid_512",
 ]
 
 
@@ -32,11 +33,17 @@ def evaluate_resolution(
     if study.get("status")!="CASE_B_ONLY_RESOLUTION_AND_UNCERTAINTY_SCREEN_NO_VALIDATION":
         raise ResolutionEvidenceError("unqualified source, not Case B grid study")
     pairs=study.get("grid_pairwise_refinement_differences",{})
-    if not all(k in pairs for k in PAIR_KEYS):
+    if not all(k in pairs for k in PAIR_KEYS[:4]):
         raise ResolutionEvidenceError("require complete four matched doubling intervals")
+    # Fine meshes must be contiguous; never claim the last two mesh pairs
+    # if the intermediate source-locked trajectory is absent.
+    if ("grid_256_to_grid_512" in pairs) and ("grid_128_to_grid_256" not in pairs):
+        raise ResolutionEvidenceError("missing intermediate 128-to-256 grid evidence")
+    used_keys=PAIR_KEYS[:6] if PAIR_KEYS[5] in pairs else (
+        PAIR_KEYS[:5] if PAIR_KEYS[4] in pairs else PAIR_KEYS[:4])
     rms=[]
     breaks=[]
-    for key in PAIR_KEYS:
+    for key in used_keys:
         row=pairs[key]
         x=row["temperature_grid_RMS_difference_K"]
         t=row["model_80C_breakthrough_shift_s"]
@@ -49,12 +56,17 @@ def evaluate_resolution(
                      for i in range(len(breaks)-1)]
     monotonic=all(a>b for a,b in zip(rms,rms[1:]))
     crossed=all(abs(a)>abs(b) for a,b in zip(breaks,breaks[1:]))
-    meets=rms[-1]<=next_numerical_target_rms_K and abs(breaks[-1])<=next_numerical_target_crossing_shift_s
+    meets=(rms[-1]<=next_numerical_target_rms_K and
+           abs(breaks[-1])<=next_numerical_target_crossing_shift_s and
+           all(a>b for a,b in zip(rms,rms[1:])) and
+           all(abs(a)>abs(b) for a,b in zip(breaks,breaks[1:])))
     return {
         "scientific_status":"NUMERICAL_REFINEMENT_DIAGNOSTIC_NOT_EXTERNAL_VALIDATION",
         "dataset_doi":study.get("experiment"),
         "case":"B ONLY",
         "all_C_D_forward_predictions_still_withheld":True,
+        "grid_pair_keys":used_keys,
+        "finest_grid_cells":512 if len(used_keys)==6 else 256 if len(used_keys)==5 else 128,
         "rms_change_K":rms,
         "crossing_shift_s":breaks,
         "observed_order_from_outlet_RMS_doublings":orders,
