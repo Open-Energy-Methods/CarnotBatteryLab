@@ -47,3 +47,45 @@ def test_refuse_unqualified_report_type():
     case["status"]="EVIDENCE_NOT_AVAILABLE"
     with pytest.raises(ResolutionEvidenceError):
         evaluate_resolution(case)
+
+
+def test_512_mesh_extension_requires_complete_source_pairs():
+    source=fixture()
+    source["grid_pairwise_refinement_differences"]["grid_128_to_grid_256"]={
+        "temperature_grid_RMS_difference_K":.5,
+        "model_80C_breakthrough_shift_s":5.,
+    }
+    source["grid_pairwise_refinement_differences"]["grid_256_to_grid_512"]={
+        "temperature_grid_RMS_difference_K":.25,
+        "model_80C_breakthrough_shift_s":2.5,
+    }
+    report=evaluate_resolution(source)
+    assert report["finest_grid_cells"]==512
+    assert len(report["rms_change_K"])==6
+    assert report["numerical_resolution_pass"] is True
+    assert report["external_predictive_validation_pass"] is False
+
+
+def test_512_missing_256_intermediate_fails():
+    source=fixture()
+    source["grid_pairwise_refinement_differences"]["grid_256_to_grid_512"]={
+        "temperature_grid_RMS_difference_K":.25,
+        "model_80C_breakthrough_shift_s":2.5,
+    }
+    with pytest.raises(ResolutionEvidenceError,match="missing intermediate"):
+        evaluate_resolution(source)
+
+
+def test_nonmonotonic_fine_grid_cannot_claim_numerical_acceptance():
+    source=fixture()
+    source["grid_pairwise_refinement_differences"]["grid_128_to_grid_256"]={
+        "temperature_grid_RMS_difference_K":2.,
+        "model_80C_breakthrough_shift_s":20.,
+    }
+    source["grid_pairwise_refinement_differences"]["grid_256_to_grid_512"]={
+        "temperature_grid_RMS_difference_K":.5,
+        "model_80C_breakthrough_shift_s":5.,
+    }
+    report=evaluate_resolution(source)
+    assert report["RMS_convergence_monotonic"] is False
+    assert report["numerical_resolution_pass"] is False
