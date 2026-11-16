@@ -83,7 +83,8 @@ def read_original_bitzer_run(source:bytes,*,filename:str,run_id:str)->RunSummary
         reader.fieldnames=fields
     if fields is None or len(fields)!=len(set(fields)) or not set(
         MANDATORY_CHANNELS).issubset(fields):
-        raise ValueError("required original Bitzer sensor channels unavailable")
+        missing=sorted(set(MANDATORY_CHANNELS)-set(fields or []))
+        raise ValueError(f"required original Bitzer sensor channels unavailable: {missing}")
     if not any("Time"==col for col in fields):
         raise ValueError("no original logger time channel")
     observations=0;pressure_good=0;motor_good=0;motor_parse=0;complete=0
