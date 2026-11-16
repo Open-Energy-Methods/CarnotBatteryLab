@@ -227,6 +227,13 @@ Both modules explicitly **refuse experimental hardware qualification, a validate
 - [R718 TES-state charging to process-discharge integrated screening](docs/methods/M3_R718_SEQUENTIAL_THERMAL_SERVICE.md)
 - [M2.4 source-independent structural identifiability caveats](docs/methods/M2_SYNTHETIC_IDENTIFIABILITY.md)
 
+
+### M3.2 repeated thermal-cycle gas-service feasibility (unvalidated)
+
+The source-controlled finite-schedule scan now reuses **each previous discharge's actual full packed-bed temperature field** for the next R718 charge, enforcing a per-interval 110→150°C / 1 MW gas-proxy grade and two consecutive full-field thermal-cycle closure checks. The initial outlet-temperature sample is corrected to the physical downstream cell, with regression tests. The scan retains signed heat and first-law ledgers, and reports blocked/incomplete cycles rather than inventing service. The original 80°C-source compressor map, process-liquid HX, packed-bed experimental validation, and round-trip efficiency are **not qualified**.
+
+See [M3.2 matched gas thermal service and cyclic closure method](docs/methods/M3_MATCHED_GAS_CYCLIC_SCREEN.md).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
