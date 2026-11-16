@@ -209,6 +209,12 @@ A separately implemented, **conservative** thermophysical solver now computes id
 
 The independent synthetic four-step energy audit passed with ~**1.155 MJ** gas heat input and **0.0068 J** cumulative first-law residual. Tests verify `dh_air/dT = cp_air`, NIST segment continuity, gas/rock/wall conservation and physical guards. The actual 2024 slag batch material properties, wall UAs, gas pressure and measured flow are **not calibrated**; synthetic verification is **not external validation**. [Read M2.3 method and limitations](docs/methods/M2_VARIABLE_ENTHALPY_WALL_METHOD.md).
 
+## M2.4 synthetic parameter identifiability — NO experimental fitting
+
+A new deterministic, 7-parameter local sensitivity study varies the assumed exhaust bore, hot-wire gain, slag density and heat capacity, porosity, wall UA and gas conductivity, using only **synthetic** gas-temperature forcing. The verified model has two exact mathematical non-identifiabilities: **bore² × velocity scale** and **slag density × cp** cannot be separated using outlet temperature alone. Independent model runs preserved these aliases within numerical precision (~5.7×10⁻¹⁴ K or zero). The synthetic local-temperature SVD reports an effective rank of **2 at its declared 0.001 relative threshold**; that rank is *scenario, observable and threshold dependent*, not a Fisher-information or actual experimental parameter-identification result.
+
+See [M2.4 model-only sensitivity and identifiability methods](docs/methods/M2_SYNTHETIC_IDENTIFIABILITY.md). No original 2024 Case A/B/C/D thermal measurements are fitted; pressure validation, physical sensor calibration and full M2 external validation remain blocked.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
