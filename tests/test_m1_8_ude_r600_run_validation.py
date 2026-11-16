@@ -27,6 +27,37 @@ def _sample(*,power="2,5",pd="9,5",refrig="R600",rows=12)->bytes:
         w.writerow([f"00:00:{i:02d}","70","3,2",pd,power,"70",refrig])
     return f.getvalue().encode("utf-8")
 
+def _processed_six_source_fixtures():
+    # Synthetic test-only measured 66-column worksheet, NOT research evidence.
+    from carnot_battery_lab.physics.ude_r600_processed_means import COL
+    f=StringIO()
+    w=csv.writer(f,delimiter=";")
+    header=[[""]*66 for _ in range(11)]
+    header[6][0]="Measured Data"
+    header[10][0]="Name in Code"
+    for col,field in COL.values():
+        header[10][col]=field
+    for row in header:w.writerow(row)
+    for i in range(6):
+        row=[""]*66
+        row[0]=str(24+i)
+        row[1]="Butane"
+        row[3]="70"
+        row[6]="0.01"
+        row[7]="35"
+        row[11]=str(200000+i*5000)
+        row[12]=str(700000+i*10000)
+        row[17]="2000"
+        row[30]="330"
+        row[31]="410"
+        row[32]="405"
+        row[45]="0.55"
+        row[46]="0.6"
+        row[49]="0.7"
+        w.writerow(row)
+    return f.getvalue().encode()
+
+
 def _archive(*,change_run=None,append_bad_path=None):
     f=BytesIO()
     with ZipFile(f,"w") as z:
@@ -34,6 +65,8 @@ def _archive(*,change_run=None,append_bad_path=None):
             v=_sample() if change_run is None or change_run[0] not in name else change_run[1]
             z.writestr(LOG_ROOT+name,v)
         if append_bad_path:z.writestr(append_bad_path,b"")
+        z.writestr("data/CSV_mirror/experimental_data.CSV",
+                   _processed_six_source_fixtures())
         # Source code must never be opened, even if present in ZIP archive.
         z.writestr("data/compressor-model (Welp)/class_piston_compressor.py",
                    "raise RuntimeError('PROPRIETARY_SOURCE_MUST_NOT_BE_EXECUTED')")
@@ -51,6 +84,12 @@ def test_three_runs_and_time_samples_are_not_independent():
                for x in out["run_sensor_aggregate_only"])
     assert all(q["3D_holdout_centroid_in_training_two_run_line_segment"]
                for q in out["leave_one_ENTIRE_run_out_support_checks"])
+    processed=out["processed_six_r600_original_measured_experiment_summaries"]
+    assert processed["candidate_original_pure_nbutane_record_count"]==6
+    assert processed["pure_nbutane_measured_EOS_eligible_points"]==6
+    assert processed["reference_M1_7_0_68894_electrical_eta_absolute_error_mean"] is not None
+    assert processed["raw_individual_points_exposed"] is False
+    assert processed["original_1MW_H_REF_hardware_map_qualified"] is False
     assert out["claim_of_real_3D_in_envelope_predictive_accuracy"] is False
     assert out["minimum_independent_run_count_gate_passed"] is False
     assert out["source_model_code_used_or_republished"] is False
