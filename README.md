@@ -234,6 +234,12 @@ The source-controlled finite-schedule scan now reuses **each previous discharge'
 
 See [M3.2 matched gas thermal service and cyclic closure method](docs/methods/M3_MATCHED_GAS_CYCLIC_SCREEN.md).
 
+### M1.4 compressor map requirements — evidence gate still OPEN
+
+A reproducible real-fluid dossier now exports required **suction pressure, temperature, density, actual volumetric flow, stage ratio, discharge temperature and shaft duty** for the reference 80→70°C source / 110→150°C, 1 MW heat pump and for TES-state-responsive charging points. Each computed requirement is crosswalked against separately classed published R718/R600 experiments and theoretical comparators. Literature evidence does **not** supply a manufacturer-qualified map at the full original contract; no map is synthesized from isolated COP/maximum-temperature points.
+
+See [M1.4 map-requirements methodology and sourcing](docs/methods/M1_4_COMPRESSOR_OPERATING_REQUIREMENTS.md). No compressor or process-side heat exchanger is certified; architecture ranking remains blocked.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
