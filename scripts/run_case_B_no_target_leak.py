@@ -26,6 +26,7 @@ from exploratory_forward_horizontal_bed import (
     ASSUMED_ROCK_CP_J_KGK,ASSUMED_WALL_UA_W_K)
 from carnot_battery_lab.physics.packed_bed import PackedBedGeometry
 from carnot_battery_lab.physics.gas_rock_regenerator import GasRockBed
+from carnot_battery_lab.validation.dynamic_thermocouples import sample_cell_centres
 from carnot_battery_lab.validation.exhaust_flow_coupling import (
     ExhaustCouplingSettings,step_from_velocity)
 
@@ -51,6 +52,16 @@ def evaluate_case_B(data_dir:Path,*,pipe_inner_diameter_m:float=.052,
     state=_initial_state(bed,records[0])
     times=[records[0]["Time exp."]]
     predictions=[state.fluid_temperature_K[-1]-273.15]
+    # Nominal FIXED physical probe coordinates, NOT verified 2024 sensor
+    # positions; identical for all grids and phases. No post-t0 measured
+    # thermocouple is used to choose physical positions.
+    evaluation_positions_m=tuple(.05*i for i in range(1,8))
+    internal_gas_K={f"x{int(i*5):02d}cm":[sample_cell_centres(
+        state.fluid_temperature_K,z,geom.length_m)] for i,z in enumerate(
+            evaluation_positions_m,start=1)}
+    internal_rock_K={f"x{int(i*5):02d}cm":[sample_cell_centres(
+        state.solid_temperature_K,z,geom.length_m)] for i,z in enumerate(
+            evaluation_positions_m,start=1)}
     flows=[]
     iterations=[]
     flow_residuals=[]
@@ -65,6 +76,12 @@ def evaluate_case_B(data_dir:Path,*,pipe_inner_diameter_m:float=.052,
         state=result.bed_step.final_state
         times.append(row["Time exp."])
         predictions.append(result.predicted_exhaust_temperature_K-273.15)
+        for i,z in enumerate(evaluation_positions_m,start=1):
+            key=f"x{i*5:02d}cm"
+            internal_gas_K[key].append(sample_cell_centres(
+                state.fluid_temperature_K,z,geom.length_m))
+            internal_rock_K[key].append(sample_cell_centres(
+                state.solid_temperature_K,z,geom.length_m))
         flows.append(result.mass_flow_kg_s)
         iterations.append(result.iterations)
         flow_residuals.append(result.relative_flow_residual)
@@ -93,6 +110,11 @@ def evaluate_case_B(data_dir:Path,*,pipe_inner_diameter_m:float=.052,
         "predicted_first_80C_s":_first_rising_crossing_s(times,predictions,80),
         "model_time_s":times,
         "predicted_exhaust_C":predictions,
+        "internal_sample_positions_m":list(evaluation_positions_m),
+        "internal_sampled_gas_K":internal_gas_K,
+        "internal_sampled_rock_K":internal_rock_K,
+        "internal_sample_positions_are_assumptions_NOT_verified_sensor_locations":True,
+        "internal_fields_do_not_use_post_initial_measured_TC":True,
         "measured_exhaust_C_evaluation_only":measured,
         "bed_inputs":asdict(bed),
         "model_boundary_settings":asdict(settings),
