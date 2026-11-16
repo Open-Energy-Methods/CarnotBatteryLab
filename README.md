@@ -215,6 +215,18 @@ A new deterministic, 7-parameter local sensitivity study varies the assumed exha
 
 See [M2.4 model-only sensitivity and identifiability methods](docs/methods/M2_SYNTHETIC_IDENTIFIABILITY.md). No original 2024 Case A/B/C/D thermal measurements are fitted; pressure validation, physical sensor calibration and full M2 external validation remain blocked.
 
+## M3 bidirectional TES and R718 charge-to-discharge handoff — UNVALIDATED
+
+The conservative gas/rock packed-bed model now supports **physical reverse-flow thermal discharge** (cold process gas enters original x=L, hot exhaust leaves x=0), sampled process-temperature qualification, signed gas heat/exergy, separate modelled Ergun fan work, unclipped thermal state of charge and repeated charge/discharge **energy ledgers**. The synthetic short-cycle test returned **zero qualified high-grade heat and failed cyclic state closure**; a *separately* preheated uniform bed delivered **24.1 kJ** above the synthetic 350 K outlet cutoff. No round-trip efficiency is claimed.
+
+The existing **TES-state-responsive R718 heat-pump charging simulation** is also now sequentially linked to this reverse-flow module using the actual post-charge storage state. In source-controlled real-fluid tests, the candidate gas 80→110°C stream gained ~**105.2 MJ**, but none met the 110°C outlet requirement. The target industrial gas 110→150°C stream instead *lost* ~**30.5 MJ** to the insufficiently hot bed, and delivered **zero qualified process heat**. These are valuable negative feasibility results for one illustrative charging trajectory, NOT proof that a hardware-qualified HTHP/storage system cannot ever supply that service.
+
+Both modules explicitly **refuse experimental hardware qualification, a validated compressor map, cyclic RTE or matched-service architecture comparison**. Source lab gas-flow and pressure calibration, measured slag/sensor inputs, qualified compressor envelopes, actual process HXs, full cyclic steady state and independent physical validation remain outstanding.
+
+- [Standalone M3 reverse-flow, service-grade and cycling methods](docs/methods/M3_REVERSE_FLOW_THERMAL_CYCLES.md)
+- [R718 TES-state charging to process-discharge integrated screening](docs/methods/M3_R718_SEQUENTIAL_THERMAL_SERVICE.md)
+- [M2.4 source-independent structural identifiability caveats](docs/methods/M2_SYNTHETIC_IDENTIFIABILITY.md)
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)

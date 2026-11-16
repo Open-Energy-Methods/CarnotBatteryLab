@@ -1,0 +1,31 @@
+name: m3-r718-sequential-thermal-service
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/sequential_hp_tes_service.py'
+      - 'src/carnot_battery_lab/physics/reverse_flow_discharge.py'
+      - 'scripts/run_m3_r718_sequential_service.py'
+      - 'tests/test_m3_r718_sequential_service.py'
+      - '.github/workflows/m3-r718-sequential-thermal-service.yml'
+  workflow_dispatch:
+jobs:
+  source-restricted-r718-hp-tes-process-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real-fluid and test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test physically state-dependent charge, discharge first law and process temperature guards
+        run: python -m pytest tests/test_m3_r718_sequential_service.py -v
+      - name: Create unvalidated R718-HP-to-TES-to-process-service evidence artifact
+        run: python scripts/run_m3_r718_sequential_service.py --output results/m3_r718_sequential_hp_tes_discharge_screen.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m3-r718-to-reverse-tes-unqualified-industrial-screen
+          path: results/m3_r718_sequential_hp_tes_discharge_screen.json
+          if-no-files-found: error
+          retention-days: 21
