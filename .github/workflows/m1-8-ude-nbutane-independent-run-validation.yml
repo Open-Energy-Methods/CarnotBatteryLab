@@ -1,0 +1,39 @@
+name: m1-8-ude-nbutane-independent-run-validation
+on:
+  push:
+    paths:
+      - 'scripts/inspect_ude_r600_run_metadata.py'
+      - 'scripts/run_m1_8_ude_r600_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
+      - 'tests/test_m1_8_ude_r600_run_validation.py'
+      - '.github/workflows/m1-8-ude-nbutane-independent-run-validation.yml'
+      - 'docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md'
+  pull_request:
+    paths:
+      - 'scripts/inspect_ude_r600_run_metadata.py'
+      - 'scripts/run_m1_8_ude_r600_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
+      - 'tests/test_m1_8_ude_r600_run_validation.py'
+      - '.github/workflows/m1-8-ude-nbutane-independent-run-validation.yml'
+      - 'docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md'
+  workflow_dispatch:
+
+jobs:
+  ude-original-r600-schema-and-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Original MD5-verified Zenodo n-butane log discovery
+        run: |
+          python scripts/inspect_ude_r600_run_metadata.py \
+            --download --output results/m1_8_ude_nbutane_schema_only.json
+      - name: Upload metadata only not original source data
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-8-original-nbutane-logs-SCHEMA-NOT-validated-map
+          path: results/m1_8_ude_nbutane_schema_only.json
+          if-no-files-found: error
+          retention-days: 30
