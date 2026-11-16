@@ -33,7 +33,7 @@ def _processed_six_source_fixtures():
     f=StringIO()
     w=csv.writer(f,delimiter=";")
     header=[[""]*66 for _ in range(11)]
-    header[6][0]="Measured Data"
+    header[6][0]="Measured  Data"
     header[6][39]="Calculated Data"
     header[10][0]="Name in Code"
     for col,field in COL.values():
