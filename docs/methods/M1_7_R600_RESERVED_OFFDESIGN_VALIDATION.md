@@ -43,6 +43,25 @@ The fixed 0.68894 hypothesis has a pre-declared *exploratory accuracy screen* of
 
 The fitted two-parameter ridge curve is **exploratory**: even if it yields a smaller holdout error, the 20-observation sample, one frequency, same experimental campaign, and possible source measurement correlations mean the performance estimate is preliminary. We do **not** use the five heldout outcomes to choose polynomial degree, regularization, covariates, sample composition, H-REF compressor efficiency or release-gate thresholds. No before/after retraining is allowed on the reserved observations in the frozen M1.7 evaluation.
 
+## Reproduced results — pinned source CSV, CI 16 November 2026
+
+The exact original Zenodo MD5 was independently verified before parsing. **20 real OST pure-butane observations** were selected; **15** entered the training group and **5** were reserved using the pressure-ratio-bin and SHA-256 input-condition protocol frozen above. No observed `eta_is` or `eta_vol` informed point allocation or ridge regularization.
+
+| Experimentally reserved response/approach | N | MAE, absolute efficiency | RMSE |
+|---|---:|---:|---:|
+| Original zero-fit reference `eta_is,electric=0.68894` | 5 | **0.066520** | **0.102252** |
+| Exploratory pressure-ratio ridge, **overall electrical η** | 5 | **0.087995** | **0.092751** |
+| Training-only constant volumetric η | 5 | **0.098420** | **0.139053** |
+| Exploratory pressure-ratio ridge, **volumetric η** | 5 | **0.040943** | **0.047854** |
+
+For the zero-fit electrical efficiency reference, the prediction-minus-measurement **bias is +0.066520** and maximum absolute error is **0.216340**. The predeclared **MAE ≤0.05** exploratory consistency screen is therefore **FAILED**, not quietly weakened post hoc. The fitted electrical-efficiency ridge performs worse on MAE than the zero-fit model (though better on RMSE), so it is **not recommended** for use as a replacement R600 performance map. The volumetric-efficiency fit reduces heldout MAE relative to the training-only constant, but does not establish accurate volumetric flow or rated speed/pressure coverage.
+
+Most critically, only **1/5 withheld experimental points** lies within the **three-dimensional training pressure/temperature/log-pressure-ratio convex hull**; **4/5 are beyond it**. Therefore these scores are primarily small-sample **out-of-support stress tests**, not demonstrated interior interpolation predictive accuracy. We **do not change the reserved split after seeing this result** or select a more flattering subset. An independent experimental campaign with enough dense map coverage and additional prespecified holdout points is necessary for robust in-envelope model validation.
+
+At the original target, M1.4 R600 numerical suction is **719,909.92 Pa = 7.1991 bar**, above the available pure-butane experimental suction maximum **5.1494 bar**. Five high-side choices **4.0–6.0 MPa = 40–60 bar** all exceed the OST experimental discharge maximum **24.9463 bar**. Every nominal target case fails even marginal-pressure-range overlap, independently of the exploratory efficiency fits. This is a **dataset/machine noncoverage result**, not proof that natural-fluid heat pumps cannot meet H-REF.
+
+The JSON artifact preserves exact source/model SHA-256, opaque hashes of training and reserved operating-condition identities, training-only model coefficients, original fixed baseline, aggregate error metrics, EOS ideal/specific-work diagnostics and explicit nonqualification fields. It contains **no individual original measured rows**. Neither error bars nor measured sensor uncertainties were invented.
+
 ## H-REF equipment compatibility remains blocked
 
 The M1.6 physical source audit established measured OST pure-butane suction range **1.4813–5.1494 bar**, discharge **2.884–24.9463 bar**, suction 25.15–86.88°C, pressure ratios 1.947–12.002. The numerical R600 H-REF 80→70°C evaporator requires 65°C refrigeration evaporation; the M1.4 scan uses **40–60 bar high-side** and a higher suction pressure than the 20-point measured OST range. These independent experimental points do **not** include a matched machine operating envelope for any of our five numerical R600 high-side choices. Moreover the lab's Bock compressor geometry, capacity, control, speed and temperature limitations cannot be changed by scaling its efficiency alone to 1 MW.
