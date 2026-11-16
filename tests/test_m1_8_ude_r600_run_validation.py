@@ -42,7 +42,9 @@ def _archive(*,change_run=None,append_bad_path=None):
 def test_three_runs_and_time_samples_are_not_independent():
     raw=_archive()
     out=audit_original_ude_archive(raw,expected_md5=md5(raw).hexdigest())
-    assert out["independent_original_R600_run_count"]==3
+    assert out["source_filename_labeled_nbutane_run_count"]==3
+    assert out["logger_setting_compatible_nbutane_run_count"]==3
+    assert out["logged_refrigerant_identity_conflict_detected"] is False
     assert out["raw_correlated_time_sample_count_not_independent"]==36
     assert out["experimental_run_ids"]==["026","027","028"]
     assert all(x["positive_motor_channel_rows"]==12
