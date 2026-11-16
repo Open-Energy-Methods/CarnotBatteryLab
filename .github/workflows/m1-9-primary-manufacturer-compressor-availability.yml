@@ -1,0 +1,65 @@
+name: m1-9-primary-manufacturer-compressor-availability-screen
+on:
+  push:
+    paths:
+      - 'scripts/audit_m1_9_manufacturer_map_sources.py'
+      - 'tests/test_m1_9_manufacturer_map_sources.py'
+      - '.github/workflows/m1-9-primary-manufacturer-compressor-availability.yml'
+      - 'docs/methods/M1_9_PRIMARY_MANUFACTURER_MAP_ACQUISITION.md'
+  pull_request:
+    paths:
+      - 'scripts/audit_m1_9_manufacturer_map_sources.py'
+      - 'tests/test_m1_9_manufacturer_map_sources.py'
+      - '.github/workflows/m1-9-primary-manufacturer-compressor-availability.yml'
+      - 'docs/methods/M1_9_PRIMARY_MANUFACTURER_MAP_ACQUISITION.md'
+  workflow_dispatch:
+
+jobs:
+  vendor-primary-constraints-not-manufacturer-qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install actual physical EOS and test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test unit-basis ambiguity, component identity, source/reply integrity
+        run: python -m pytest tests/test_m1_9_manufacturer_map_sources.py tests/test_m1_compressor_envelope_requirements.py -v
+      - name: Reproduce M1.4 exact source and process compressor demands
+        run: |
+          python scripts/run_m1_compressor_map_requirements.py \
+            --output results/m1_compressor_map_requirements_80_70_to_110_150.json
+      - name: Compare primary-source manufacturer control limits and experimental-machine peaks
+        run: |
+          python scripts/audit_m1_9_manufacturer_map_sources.py \
+            --requirements results/m1_compressor_map_requirements_80_70_to_110_150.json \
+            --output results/m1_9_primary_compressor_source_and_vendor_limit_audit.json
+      - name: Assert negative vendor-component screen and no invented map or author reply
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("results/m1_9_primary_compressor_source_and_vendor_limit_audit.json").read_text())
+          assert r["number_of_scenario_r600_pressures_checked"]==5
+          assert r["HPC_HPO_R600_robust_controller_incompatibilities"]==5
+          assert len(r["R718_2020_separate_rig_stage_ratio_check"])==2
+          assert all(q["demand_exceeds_different_rig_individual_peak_ratio"]
+                     for q in r["R718_2020_separate_rig_stage_ratio_check"])
+          assert r["R718_2024_SINTEF_inlet_1_to_2bara_includes_model_stage1_0_25bara"] is False
+          assert r["OST_2026_439_point_campaign_contains_pure_nbutane_by_table_1"] is False
+          assert r["outreach_messages_sent"] is False
+          assert r["outreach_reply_received"] is False
+          assert r["target_R600_manufacturer_machine_map_accepted"] is False
+          assert r["target_R718_manufacturer_machine_map_accepted"] is False
+          assert r["matched_service_Carnot_battery_RTE"] is None
+          print("M1_9_PRIMARY_COMPONENT_NEGATIVE_EVIDENCE_AND_NO_FICTIONAL_QUALIFICATION_PASS")
+          PY
+      - name: Retain source-referenced aggregate engineering evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-9-source-documented-controls-not-certified-map
+          path: results/m1_9_primary_compressor_source_and_vendor_limit_audit.json
+          if-no-files-found: error
+          retention-days: 60
