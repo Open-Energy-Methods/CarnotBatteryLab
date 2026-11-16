@@ -197,6 +197,12 @@ The new 128-cell Case B phase/position-extrema pipeline found that **46–56%** 
 
 [Original instrumentation evidence and scientific limitations](docs/methods/M2_MIXED_PHASE_SENSOR_EVIDENCE.md) · [Author metadata request, prepared but not sent](docs/validation/REQUEST_HORIZONTAL_BED_INSTRUMENT_METADATA.md). Physical calibration and M2 remain **blocked** despite the previously demonstrated 512-cell outlet numerical convergence.
 
+## Dynamic seven-probe mixed-contact observation (M2.1)
+
+An independent **one-way thermocouple observation module** now applies one common axial layout (50 mm spacing), shared assumed gas/solid contact and first-order response time to all seven Type-K probes. Exact piecewise-linear sensor forcing integration is analytically tested. **No probe offset, contact fraction or time constant is fitted to experimental curves.** The source-locked 2024 Case B data study compares 27 fixed joint hypotheses to T1–T7 and still finds frequent disagreement (T7 readings outside the broad scenario band **52%** of the time, maximum outside distance **90.7°C**). These are **not calibrated error bars or experimental validation**.
+
+[Read M2.1 methods and the seven-probe measured diagnostics](docs/methods/M2_DYNAMIC_TC_OBSERVATION.md). Physical validation remains source-limited and M2 open.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)

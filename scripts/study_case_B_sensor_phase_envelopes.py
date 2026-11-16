@@ -66,6 +66,13 @@ def study(data_dir:Path,*,cells:int=128)->dict:
     layout=SensorLayoutEvidence()
     settings=ExhaustCouplingSettings()
     state=_initial_state(bed,records[0])
+    # Export forward-only phase states: enables separate reproducible dynamic
+    # sensor and in-bed mesh studies without touching observed TC targets.
+    phase_state_history=[{
+        "time_s":float(records[0]["Time exp."]),
+        "gas_K":[float(x) for x in state.fluid_temperature_K],
+        "solid_K":[float(x) for x in state.solid_temperature_K],
+    }]
     predictions={f"T{i}":[] for i in range(1,8)}
     summaries={f"T{i}":[] for i in range(1,8)}
     times=[]
@@ -80,6 +87,11 @@ def study(data_dir:Path,*,cells:int=128)->dict:
             settings=settings)
         assert result.measured_outlet_temperature_used_as_input is False
         state=result.bed_step.final_state
+        phase_state_history.append({
+            "time_s":float(row["Time exp."]),
+            "gas_K":[float(x) for x in state.fluid_temperature_K],
+            "solid_K":[float(x) for x in state.solid_temperature_K],
+        })
         times.append(row["Time exp."])
         gas=[x-273.15 for x in state.fluid_temperature_K]
         solid=[x-273.15 for x in state.solid_temperature_K]
@@ -123,6 +135,8 @@ def study(data_dir:Path,*,cells:int=128)->dict:
             sqrt(mean(x*x for x in outlet_errors)),
         "sensor_outside_extrema_diagnostics":outputs,
         "sensor_time_series":predictions,
+        "forward_phase_states":phase_state_history,
+        "phase_states_from_predicted_Tout_no_later_TC_target_input":True,
         "not_a_calibrated_sensor_uncertainty_interval":True,
         "held_out_from_model_selection":["C","D"],
         "previously_inspected_not_blind":"A",
