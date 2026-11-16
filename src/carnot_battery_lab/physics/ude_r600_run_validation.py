@@ -77,6 +77,10 @@ def read_original_bitzer_run(source:bytes,*,filename:str,run_id:str)->RunSummary
     csvtext=source.decode("utf-8-sig",errors="replace")
     reader=csv.DictReader(io.StringIO(csvtext),delimiter=";")
     fields=reader.fieldnames
+    if fields is not None:
+        # Bitzer exports preserve leading/trailing spaces in some headers.
+        fields=[f.strip() for f in fields]
+        reader.fieldnames=fields
     if fields is None or len(fields)!=len(set(fields)) or not set(
         MANDATORY_CHANNELS).issubset(fields):
         raise ValueError("required original Bitzer sensor channels unavailable")
