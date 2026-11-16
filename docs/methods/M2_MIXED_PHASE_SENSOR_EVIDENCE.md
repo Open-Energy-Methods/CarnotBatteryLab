@@ -40,6 +40,26 @@ The script records source observation, model interval lower/upper, fraction outs
 
 A 128-cell execution is only an exploratory sensor-observation check, not a new numerical front/phase field convergence pass. Previous 512-cell successful convergence pertains specifically to **outlet temperature/front**, not necessarily in-bed sensor observation operators. Never conflate the two.
 
+## First source-locked Case B sensor-compatibility results
+
+The dedicated GitHub Actions job ran the target-independent exhaust-flow 1-D solver at **128 cells** (numerical grid convergence of these in-bed extrema is **not** established), on the original source-hashed Case B with 220 post-initialisation sample times. The model does not ingest measured downstream T1–T7 for forcing or calibration.
+
+| Original measured TC | Fraction outside even broad gas/rock x-position extrema | Average outside distance (°C, zero for inside) | Maximum outside distance (°C) |
+|---|---:|---:|---:|
+| T1 | 56.3% | 3.02 | 26.73 |
+| T2 | 46.3% | 2.01 | 20.01 |
+| T3 | 51.3% | 5.09 | 57.69 |
+| T4 | 46.7% | 5.20 | 61.80 |
+| T5 | 48.3% | 7.59 | 70.11 |
+| T6 | 50.3% | 9.48 | 71.75 |
+| T7 | 55.7% | 15.53 | 91.00 |
+
+**Interpretation:** even a broad, *independently uncalibrated* phase/possible-position envelope frequently does not contain the measured TC values, with especially large maximum downstream disagreement. This is evidence of **model/measurement incompatibility under current instantaneous assumptions** and a research diagnostic, not a physical-uncertainty estimate or a formal validation failure. The unknown sensor lag, thermal contact, radial placement, initial-layout assumption and source-input gas flow may substantially affect comparability. The maximum discrepancies must NOT be read as gas-only or rock-only residual errors, or as the result of a matched TC uncertainty calculation. No choice of a fitted x0 or fitted gas/solid mixing coefficient was made.
+
+The original simulation already has large 512-cell outlet error with and without measured-Tout forcing. These new 128-cell in-bed diagnostics therefore **strengthen the need for independently calibrated sensor and mass-flow metadata**, not a claim that thermocouple placement adjustments fix the physical model.
+
+The pipeline archives all 7 raw-sensor time histories of measured point and interval extrema plus **three clearly labelled diagnostic figures for T1/T4/T7**. Source URL/CSV hash and exact run are recorded. Numerical and physical model validation remain separate.
+
 ## What requires the authors or new experimental measurements?
 
 The following are *not available* in original public files and cannot be guessed from observed model residuals:
