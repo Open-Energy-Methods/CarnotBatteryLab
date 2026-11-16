@@ -57,3 +57,18 @@ def test_invalid_sensor_placement_or_phase_assumption_rejected():
         SensorLayoutEvidence(exact_initial_offset_m=.2)
     with pytest.raises(UnqualifiedSensorEvidence):
         SensorLayoutEvidence().axial_possible_interval_m(7)
+
+
+def test_numpy_scalar_diagnostic_serializes_for_source_archive():
+    import json
+    import numpy as np
+    a=sensor_phase_position_envelope(
+        np.asarray((100.,100.),dtype=np.float64),
+        np.asarray((30.,30.),dtype=np.float64),0)
+    report=diagnostic_summary([
+        (np.float64(50.),a),
+        (np.float64(130.),a),
+    ])
+    doc=json.dumps(report,sort_keys=True)
+    assert '"outside_model_extrema_count": 1' in doc
+    assert report["outside_model_extrema_fraction"]==pytest.approx(0.5)
