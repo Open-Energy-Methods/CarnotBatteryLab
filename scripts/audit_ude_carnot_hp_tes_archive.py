@@ -100,6 +100,7 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
                 "header_preview_truncated":len(fields)>80,
             }
         readme_headers={}
+        source_file_reuse_warnings=[]
         for name in (
             "data/README_overview.md",
             "data/GitLab Code/README_code.md",
@@ -112,6 +113,13 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
             lines=[s.strip() for s in text.splitlines()
                    if s.strip().startswith(("#","* "))]
             readme_headers[name]=lines[:40]
+            if ("may not be made public" in text.casefold()
+                or "do not redistribute" in text.casefold()):
+                source_file_reuse_warnings.append({
+                    "source_file":name,
+                    "status":"EXPLICIT_NONPUBLIC_OR_NONREDISTRIBUTION_LANGUAGE",
+                    "action":"REQUIRE_AUTHOR_PERMISSION_AND_NO_SOURCE_REPLICATION",
+                })
         return {
             "status":"UDE_OPEN_ARCHIVE_CHECKSUM_AND_MANIFEST_INSPECTED_ONLY",
             "doi":DOI,"source":URL,"source_md5":expected_md5,
@@ -122,6 +130,8 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
             "relevant_metadata_or_model_path_count":len(relevant),
             "csv_column_headers_metadata_only":headers,
             "readme_section_headings_metadata_only":readme_headers,
+            "source_file_reuse_warnings":source_file_reuse_warnings,
+            "underlying_experimental_model_code_cleared_for_redistribution":False,
             "raw_sensor_time_series_checked_for_units":False,
             "compressor_map_columns_and_uncertainties_accepted":False,
             "complete_H_REF_80_70_110_150_map_qualified":False,
@@ -155,6 +165,7 @@ def main():
             print("UDE_METADATA_HEADER",key,item["field_names"][:55])
     print("UDE_README_SECTION_HEADINGS",
           obj["readme_section_headings_metadata_only"])
+    print("UDE_REUSE_WARNINGS",obj["source_file_reuse_warnings"])
     print("UDE_H_REF_COMPRESSOR_MAP_QUALIFIED=False")
 
 
