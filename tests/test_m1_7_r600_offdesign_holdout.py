@@ -82,9 +82,9 @@ def test_exact_duplicate_operating_condition_stays_in_one_partition():
 def test_small_sample_or_pooled_machines_fails_closed():
     with pytest.raises(ValueError,match="too few"):
         reserve_operating_condition_groups(_example_observations()[:5])
-    bad=replace(_example_observations()[0],campaign="Experimental OST (London 2023)")
     with pytest.raises(ValueError,match="campaign"):
-        _=bad
+        replace(_example_observations()[0],
+                campaign="Experimental OST (London 2023)")
 
 
 def test_train_only_ridge_does_not_consult_reserved_efficiencies():
