@@ -6,6 +6,7 @@ on:
       - 'scripts/inspect_ude_processed_table_fields.py'
       - 'scripts/run_m1_8_ude_r600_validation.py'
       - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_processed_means.py'
       - 'tests/test_m1_8_ude_r600_run_validation.py'
       - '.github/workflows/m1-8-ude-nbutane-independent-run-validation.yml'
       - 'docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md'
@@ -15,6 +16,7 @@ on:
       - 'scripts/inspect_ude_processed_table_fields.py'
       - 'scripts/run_m1_8_ude_r600_validation.py'
       - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_processed_means.py'
       - 'tests/test_m1_8_ude_r600_run_validation.py'
       - '.github/workflows/m1-8-ude-nbutane-independent-run-validation.yml'
       - 'docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md'
@@ -53,6 +55,10 @@ jobs:
           assert abs(o["original_M1_7_fixed_reference_holdout_MAE"]-.06652)<1e-8
           assert u["source_filename_labeled_nbutane_run_count"]==3
           assert u["raw_correlated_time_sample_count_not_independent"]==6839
+          p=u["processed_six_r600_original_measured_experiment_summaries"]
+          assert p["candidate_original_pure_nbutane_record_count"]==6
+          assert not p["raw_individual_points_exposed"]
+          assert not p["original_1MW_H_REF_hardware_map_qualified"]
           assert u["logger_setting_compatible_nbutane_run_count"]==0
           assert u["logged_refrigerant_identity_conflict_detected"]
           assert all(x["positive_motor_channel_rows"]==0 for x in u["run_sensor_aggregate_only"])
