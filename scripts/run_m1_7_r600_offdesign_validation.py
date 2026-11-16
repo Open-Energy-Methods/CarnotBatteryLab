@@ -10,10 +10,23 @@ import argparse
 from hashlib import sha256
 from pathlib import Path
 import json
+import urllib.request
 
-from scripts.audit_public_r600_compressor_measurements import (
-    fetch_source,SOURCE_MD5,
-)
+from carnot_battery_lab.physics.r600_offdesign_holdout import SOURCE_MD5
+
+SOURCE_URL="https://zenodo.org/records/17599603/files/compressor_performance_data.csv?download=1"
+
+
+def fetch_source()->bytes:
+    request=urllib.request.Request(
+        SOURCE_URL,headers={"User-Agent":"CarnotBatteryLab-EvidenceAudit/1.0"})
+    with urllib.request.urlopen(request,timeout=45) as response:
+        if response.status!=200:
+            raise ValueError("R600 experimental CSV download failed")
+        data=response.read(7_000_001)
+    if len(data)>7_000_000:
+        raise ValueError("download exceeds pinned source size cap")
+    return data
 from carnot_battery_lab.physics.r600_offdesign_holdout import (
     EXPERIMENTAL_CAMPAIGN,
     REFERENCE_OVERALL_ELECTRIC_EFFICIENCY,
