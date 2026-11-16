@@ -45,6 +45,8 @@ def study(input_dir:Path)->dict:
         ("grid_32",{"cells":32}),
         ("grid_64",{"cells":64}),
         ("grid_128",{"cells":128}),
+        ("grid_256",{"cells":256}),
+        ("grid_512",{"cells":512}),
         ("dt_half",{"cells":16,"substeps_per_sample":2}),
         ("dt_quarter",{"cells":16,"substeps_per_sample":4}),
         ("bdf_strict",{"cells":16,"bdf_relative_tolerance":1e-9}),
@@ -77,7 +79,8 @@ def study(input_dir:Path)->dict:
     # behaviour*, not just deviation from a convenient 16-cell baseline.
     grid_refinements={}
     for coarse,fine in (("grid_08","grid_16"),("grid_16","grid_32"),
-                        ("grid_32","grid_64"),("grid_64","grid_128")):
+                        ("grid_32","grid_64"),("grid_64","grid_128"),
+                        ("grid_128","grid_256"),("grid_256","grid_512")):
         a=profiles[coarse]
         b=profiles[fine]
         grid_refinements[f"{coarse}_to_{fine}"]=differences(
@@ -108,6 +111,8 @@ def study(input_dir:Path)->dict:
         "unseen_evaluation_runs":["C","D"],
         "already_inspected_not_blind":"A",
         "calibration_runs":["B"],
+        "experimental_fit_performed":False,
+        "mesh_max_cells":512,
         "source_backed_slag_cp_range_J_kgK":[800,2300],
         "solid_axial_conduction_values_W_mK":[0,2,10],
         "solid_conduction_scenario_is_NOT_fitted_or_measured":True,
