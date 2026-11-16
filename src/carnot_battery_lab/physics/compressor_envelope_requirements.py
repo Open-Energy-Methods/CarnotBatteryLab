@@ -48,6 +48,13 @@ class CompressorStageDemand:
                 self.discharge_pressure_Pa<=self.suction_pressure_Pa or
                 self.stage_pressure_ratio<=1):
             raise ValueError("invalid compressor pressure/temperature demand")
+        true_ratio=self.discharge_pressure_Pa/self.suction_pressure_Pa
+        actual_volume=self.refrigerant_mass_flow_kg_s/self.suction_density_kg_m3
+        if (abs(self.stage_pressure_ratio-true_ratio)>
+                1e-9*max(1.,true_ratio) or
+            abs(self.suction_volumetric_flow_m3_s-actual_volume)>
+                1e-9*max(1.,actual_volume)):
+            raise ValueError("inconsistent compressor pressure ratio or inlet volume")
 
 
 def _suction_density(pressure_Pa: float, temperature_C: float,
