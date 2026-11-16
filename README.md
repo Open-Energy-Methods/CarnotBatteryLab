@@ -203,6 +203,12 @@ An independent **one-way thermocouple observation module** now applies one commo
 
 [Read M2.1 methods and the seven-probe measured diagnostics](docs/methods/M2_DYNAMIC_TC_OBSERVATION.md). Physical validation remains source-limited and M2 open.
 
+## M2.2 internal gas/solid numerical convergence verified on fixed coordinates
+
+The target-independent Case B fine-mesh workflow now records both gas and rock model histories at **seven fixed, assumed physical positions (0.05–0.35 m)** on 32/64/128/256/512-cell meshes. At 256→512 cells the worst full-history RMS increment is **0.572 K for gas** and **0.553 K for rock**, meeting the provisional 1 K *numerical* screen for these inputs. A separate exact, closed-form two-temperature/no-flow exchange benchmark verifies phase temperatures and total energy independently of the BDF integrator.
+
+[Read M2.2 source-locked in-bed numerical verification](docs/methods/M2_INTERNAL_TWO_PHASE_CONVERGENCE.md). **This is not laboratory TC validation:** the actual sensor coordinates and response, source gas flow and slag properties remain unresolved.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
