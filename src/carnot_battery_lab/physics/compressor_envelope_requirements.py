@@ -122,18 +122,21 @@ def source_and_process_requirements(*, q_source_W:float,
                                     process_supply_C:float=150.,
                                     source_cp_J_kgK:float=4180.,
                                     process_cp_J_kgK:float=4180.,
-                                    assumed_max_source_flow_kg_s:float=25.)->dict:
+                                    assumed_max_source_flow_kg_s:float|None=25.)->dict:
     """Hydraulic heat capacities are assumed service BOUNDARIES, not site data."""
     values=(q_source_W,process_duty_W,source_cp_J_kgK,
-            process_cp_J_kgK,assumed_max_source_flow_kg_s)
+            process_cp_J_kgK)
+    if assumed_max_source_flow_kg_s is not None:
+        values+= (assumed_max_source_flow_kg_s,)
     if (not all(isfinite(x) and x>0 for x in values)
         or not all(isfinite(x) for x in (
             source_in_C,source_out_C,process_return_C,process_supply_C))
         or source_in_C<=source_out_C
         or process_supply_C<=process_return_C):
         raise ValueError("invalid source/sink heat-capacity scenario")
-    available=assumed_max_source_flow_kg_s*source_cp_J_kgK*(
+    available=(assumed_max_source_flow_kg_s*source_cp_J_kgK*(
         source_in_C-source_out_C)
+        if assumed_max_source_flow_kg_s is not None else None)
     return {
         "source_in_C":source_in_C,"source_out_C":source_out_C,
         "sink_return_C":process_return_C,"sink_supply_C":process_supply_C,
@@ -142,7 +145,9 @@ def source_and_process_requirements(*, q_source_W:float,
             source_cp_J_kgK*(source_in_C-source_out_C)),
         "assumed_source_flow_cap_kg_s":assumed_max_source_flow_kg_s,
         "source_heat_available_at_assumed_cap_W":available,
-        "source_heat_below_assumed_cap":q_source_W<=available*(1+1e-10),
+        "source_heat_below_assumed_cap":(
+            q_source_W<=available*(1+1e-10)
+            if available is not None else None),
         "required_process_heat_W":process_duty_W,
         "required_process_water_flow_kg_s":process_duty_W/(
             process_cp_J_kgK*(process_supply_C-process_return_C)),
@@ -168,9 +173,7 @@ def r718_requirements_report(result:R718Result)->dict:
             source_cp_J_kgK=result.inputs.source_cp_J_kgK,
             process_cp_J_kgK=result.inputs.process_cp_J_kgK,
             assumed_max_source_flow_kg_s=(
-                result.inputs.available_source_flow_kg_s
-                if result.inputs.available_source_flow_kg_s is not None
-                else 25.)),
+                result.inputs.available_source_flow_kg_s)),
         "test_required":"manufacturer/vendor multipoint stage maps including "
             "speed, surge/choke, suction state, corrected volumetric capacity, "
             "efficiency and discharge-temperature/oil limits at every point",
@@ -224,12 +227,21 @@ def r718_charge_trajectory_demands(charge, hp_inputs:R718Inputs,
             abs(p.stage_pressure_ratio-q)>1e-7
             for p,q in zip(stages,step.compressor_stage_ratios)):
             raise RuntimeError("TES-responsive R718 charge envelope reconstruction failed")
+        # Explicitly preserve the charge solver's broader grid-electric
+        # meter boundary (gearbox 0.95, inverter 0.98, motor efficiency).
+        # It must not be confused with the bare compressor shaft requirement.
+        expected_grid=solved.W_compressor_shaft_W/(
+            case.motor_efficiency*.98*.95)
+        if abs(expected_grid-step.compressor_electric_W)>1e-7*max(
+                1.,abs(step.compressor_electric_W)):
+            raise RuntimeError("TES charging compressor electricity mismatch")
         records.append({
             "step":index,"elapsed_s":step.elapsed_s,
             "bed_return_C":step.mean_return_C,
             "hot_gas_supply_C":step.hot_gas_in_C,
             "condenser_saturation_C":step.condenser_saturation_C,
             "compressor_stages":[asdict(x) for x in stages],
+            "compressor_electric_W_with_assumed_drive_losses":expected_grid,
         })
     return {
         "charge_completed":charge.completed,
