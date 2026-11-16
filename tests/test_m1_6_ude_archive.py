@@ -35,6 +35,21 @@ def test_real_archive_inventory_contract_without_releasing_data():
         "readme_section_headings_metadata_only"]
 
 
+def test_source_internal_nonpublic_model_warning_is_detected():
+    out=BytesIO()
+    with ZipFile(out,"w") as z:
+        z.writestr("data/compressor-model (Welp)/README.txt",
+                   "### This model may NOT be made public, proprietary origin ###\n")
+        z.writestr("data/README_overview.md","# Datasets\n")
+    raw=out.getvalue()
+    report=inspect_archive(raw,expected_md5=md5(raw).hexdigest())
+    assert report["underlying_experimental_model_code_cleared_for_redistribution"] is False
+    assert len(report["source_file_reuse_warnings"])==1
+    assert report["source_file_reuse_warnings"][0]["status"]==(
+        "EXPLICIT_NONPUBLIC_OR_NONREDISTRIBUTION_LANGUAGE")
+    assert report["raw_archive_data_redistributed"] is False
+
+
 def test_archive_wrong_checksum_refused():
     with pytest.raises(ValueError,match="checksum"):
         inspect_archive(package("README_overview.md"),
