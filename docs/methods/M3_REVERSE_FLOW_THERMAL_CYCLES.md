@@ -34,9 +34,19 @@ The bed gas/rock storage energy is the existing constant-cp thermal inventory. N
 
 ## Synthetic independent demonstration
 
-Nominal 0.4 m × 0.158 m test vessel, ~20 mm particles, estimated porosity 0.39; 12 volume cells; unmeasured gas density and slag cp/density; 30 min×? actually **30 charging steps ×30 s and 30 reverse discharge steps ×30 s per cycle**; three repeated cycles; heat-gas charging inlet 430 K, discharge return 303.15 K, useful process cutoff 350 K, 0.010 kg/s and ambient 303.15 K; **unverified** wall UA 0.2 W/K and modelled Ergun blower energy. This is completely synthetic: no real gas/slag instrument data and no R718/R600 compressor map or process heat exchanger.
+Nominal 0.4 m × 0.158 m test vessel, ~20 mm particles, estimated porosity 0.39; 12 volume cells; unmeasured gas density and slag cp/density; **30 charging steps ×30 s (15 min) and 30 reverse discharge steps ×30 s (15 min) per cycle**; three repeated cycles; heat-gas charging inlet 430 K, discharge return 303.15 K, useful process cutoff 350 K, 0.010 kg/s and ambient 303.15 K; **unverified** wall UA 0.2 W/K and modelled Ergun blower energy. This is completely synthetic: no real gas/slag instrument data and no R718/R600 compressor map or process heat exchanger.
 
 Numerical tests independently compare reverse flow to the original forward solver applied on physically reversed states; check full energy inventories, positive discharge heat, unavailable-grade withholding, blower energy, exergy formula, unclipped SOC, total cyclic first law and fail-closed duty guards. The CI artifact archives every interval grade and pressure estimate, scenario input hash and cyclic state deviation.
+
+## Verified positive/negative service demonstrations
+
+The reproducible synthetic CI script produces TWO distinct, noninterchangeable demonstrations:
+
+1. **Nominal short charge–discharge cycling:** starting from a uniform 303.15 K bed, three 15-min charge/15-min reverse-discharge cycles at 430 K inlet hot gas, 303.15 K return and a **350 K** qualified outlet cutoff. The first three independent cycle-level heat-balance residuals are approximately 10⁻⁹ J. **All three cycles deliver zero qualified high-grade heat at the chosen 350 K threshold** and end-state temperatures do not close: first cycle ~57.26 K maximum cell change, third ~6.42 K. This is a failed process-service/cyclic-closure case, **not** round-trip performance.
+
+2. **Separate initially preheated bed:** starting from a uniformly preheated **383.15 K** bed (a hypothetical state **not reached by the nominal short-charge protocol**), the same reverse-flow discharge solver runs 15 intervals and reports strictly positive qualified heat above 350 K, its process-gas exergy, predicted Ergun blower work and first-law closure. This is a *component-level positive demonstration* of grade screening, **not** a matched-charge–discharge demonstration. It cannot be used to compute a round-trip efficiency.
+
+The model output explicitly stores the two separately and never silently substitutes the preheated initial state into the nominal cycle. The report's `round_trip_efficiency_established` and `compressor_or_heat_pump_coupling_included` remain false irrespective of the synthetic high-grade output.
 
 ## Research acceptance gates not yet satisfied
 
