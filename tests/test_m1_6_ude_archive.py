@@ -11,12 +11,12 @@ def package(*names):
     out=BytesIO()
     with ZipFile(out,"w") as z:
         for name in names:
-            z.writestr(name,"TEST_ONLY\n")
+            z.writestr(name,"T_suction_C,p_suction_bar\n85,7\n" if name.endswith(".csv") else "# TEST_ONLY\n")
     return out.getvalue()
 
 
 def test_real_archive_inventory_contract_without_releasing_data():
-    raw=package("README_overview.md",
+    raw=package("data/README_overview.md",
                 "data/Experiment_01/compressor_data.csv",
                 "data/Experiment_01/pressures.csv",
                 "models/compressor_model.py")
@@ -30,7 +30,7 @@ def test_real_archive_inventory_contract_without_releasing_data():
     assert report["raw_archive_data_redistributed"] is False
     assert report["csv_column_headers_metadata_only"][
         "data/Experiment_01/compressor_data.csv"]["field_names"]==[
-            "TEST_ONLY"]
+            "T_suction_C","p_suction_bar"]
     assert "data/README_overview.md" in report[
         "readme_section_headings_metadata_only"]
 
