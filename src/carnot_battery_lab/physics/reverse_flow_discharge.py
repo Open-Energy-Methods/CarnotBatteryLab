@@ -24,8 +24,8 @@ from .gas_rock_regenerator import (
 
 
 def reverse_bed_state(state:BedState)->BedState:
-    return BedState(tuple(reversed(state.fluid_temperature_K)),
-                    tuple(reversed(state.solid_temperature_K)))
+    return BedState(tuple(float(x) for x in reversed(state.fluid_temperature_K)),
+                    tuple(float(x) for x in reversed(state.solid_temperature_K)))
 
 
 def thermal_exergy_change_J(
@@ -104,8 +104,8 @@ def advance_reverse_discharge(
         dt_s=dt_s,source_inlet_K=return_gas_K,
         source_outlet_mean_K=step.mean_outlet_temperature_K,
         dead_state_K=dead_state_K)
-    change=bed_energy_J(bed,final)-bed_energy_J(bed,state)
-    residual=change+delivered+step.heat_loss_to_ambient_J
+    change=float(bed_energy_J(bed,final)-bed_energy_J(bed,state))
+    residual=float(change+delivered+step.heat_loss_to_ambient_J)
     if abs(residual)>1e-5*max(1.,abs(delivered),abs(change)):
         raise RuntimeError("reverse-flow discharge energy conservation failure")
     return DischargeResult(
@@ -135,7 +135,7 @@ def thermal_soc(
     if denominator<=0:
         raise ValueError("negative/zero reference capacity")
     # A value outside [0,1] is a physically important signal; do not clip.
-    return (bed_energy_J(bed,state)-bed_energy_J(bed,empty))/denominator
+    return float((bed_energy_J(bed,state)-bed_energy_J(bed,empty))/denominator)
 
 
 @dataclass(frozen=True)
@@ -172,7 +172,7 @@ def simulate_charge_discharge_cycle(
     c:CycleConditions=CycleConditions()
 )->dict:
     """Single cycle ledger, not a cyclic steady-state efficiency estimate."""
-    start_energy=bed_energy_J(bed,state)
+    start_energy=float(bed_energy_J(bed,state))
     charge_input_J=0.
     charge_loss_J=0.
     discharge_loss_J=0.
@@ -191,7 +191,7 @@ def simulate_charge_discharge_cycle(
         charge_loss_J+=r.heat_loss_to_ambient_J
         fan_J+=r.blower_electric_W*c.dt_s
         max_abs_residual_J=max(max_abs_residual_J,abs(r.energy_residual_J))
-    after_charge_energy=bed_energy_J(bed,state)
+    after_charge_energy=float(bed_energy_J(bed,state))
     after_charge_soc=thermal_soc(bed,state,empty_temperature_K=c.empty_soc_K,
                                  full_temperature_K=c.full_soc_K)
     discharge_trace=[]
@@ -217,8 +217,8 @@ def simulate_charge_discharge_cycle(
             "qualified_process_heat_J":r.qualified_process_heat_J,
             "model_pressure_loss_Pa_unvalidated":r.model_pressure_drop_Pa_not_calibrated,
         })
-    final_energy=bed_energy_J(bed,state)
-    cycle_residual=(final_energy-start_energy-charge_input_J+heat_to_gas_J+
+    final_energy=float(bed_energy_J(bed,state))
+    cycle_residual=float(final_energy-start_energy-charge_input_J+heat_to_gas_J+
                     charge_loss_J+discharge_loss_J)
     if abs(cycle_residual)>1e-5*max(1.,abs(charge_input_J),abs(heat_to_gas_J)):
         raise RuntimeError("cycle-integrated first law failed")
@@ -263,14 +263,14 @@ def simulate_repeated_cycles(
         before=state
         r=simulate_charge_discharge_cycle(bed,state,conditions)
         state=r["final_state"]
-        deviation=max(max(abs(a-b) for a,b in zip(
+        deviation=float(max(max(abs(a-b) for a,b in zip(
             before.fluid_temperature_K,state.fluid_temperature_K)),
             max(abs(a-b) for a,b in zip(
-            before.solid_temperature_K,state.solid_temperature_K)))
+            before.solid_temperature_K,state.solid_temperature_K))))
         item={k:v for k,v in r.items() if k!="final_state"}
         item["cycle_number"]=i+1
         item["max_start_end_temperature_difference_K"]=deviation
-        item["cyclic_state_within_assumed_screen"]=deviation<=cyclic_state_max_abs_K_threshold
+        item["cyclic_state_within_assumed_screen"]=bool(deviation<=cyclic_state_max_abs_K_threshold)
         records.append(item)
     # Even converged thermal state does not establish physically validated
     # roundtrip: charging heat source, process gas equipment and fan balance
