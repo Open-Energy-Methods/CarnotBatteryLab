@@ -151,8 +151,9 @@ def audit_processed_experiment_summaries(raw:bytes)->dict:
             raise ValueError(f"source measured-field header changed at {name}")
     # Check original preamble also retains an explicit 'measured data' column
     # partition. A calculated eta is NOT an independent physical sensor.
-    if (not any("Measured Data" in s for row in rows[:11] for s in row) or
-        not any("Calculated Data" in s for row in rows[:11] for s in row)):
+    groups=[" ".join(s.split()).casefold()
+            for row in rows[:11] for s in row if s.strip()]
+    if "measured data" not in groups or "calculated data" not in groups:
         raise ValueError("source measured-vs-calculated partition missing")
     all_cats=Counter()
     rejected=Counter()
