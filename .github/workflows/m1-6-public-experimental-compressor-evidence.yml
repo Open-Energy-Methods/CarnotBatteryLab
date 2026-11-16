@@ -1,0 +1,71 @@
+name: m1-6-real-experimental-compressor-evidence-acquisition
+on:
+  push:
+    paths:
+      - 'scripts/audit_public_r600_compressor_measurements.py'
+      - 'scripts/audit_ude_carnot_hp_tes_archive.py'
+      - 'tests/test_m1_6_public_data_acquisition.py'
+      - 'tests/test_m1_6_ude_archive.py'
+      - '.github/workflows/m1-6-public-experimental-compressor-evidence.yml'
+      - 'docs/methods/M1_6_PUBLIC_EXPERIMENTAL_DATA_ACQUISITION.md'
+  pull_request:
+    paths:
+      - 'scripts/audit_public_r600_compressor_measurements.py'
+      - 'scripts/audit_ude_carnot_hp_tes_archive.py'
+      - 'tests/test_m1_6_public_data_acquisition.py'
+      - 'tests/test_m1_6_ude_archive.py'
+      - '.github/workflows/m1-6-public-experimental-compressor-evidence.yml'
+      - 'docs/methods/M1_6_PUBLIC_EXPERIMENTAL_DATA_ACQUISITION.md'
+  workflow_dispatch:
+
+jobs:
+  public-r600-measurement-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[physics,test]"
+      - name: Offline source-class separation and provenance contract tests
+        run: python -m pytest tests/test_m1_6_public_data_acquisition.py tests/test_m1_6_ude_archive.py -v
+      - name: Reproduce original M1.4 model operating requirements
+        run: python scripts/run_m1_compressor_map_requirements.py --output results/m1_compressor_map_requirements_80_70_to_110_150.json
+      - name: Fetch immutable published Zenodo CSV and verify MD5 BEFORE data classification
+        run: |
+          python scripts/audit_public_r600_compressor_measurements.py \
+            --requirements results/m1_compressor_map_requirements_80_70_to_110_150.json \
+            --download \
+            --output results/m1_6_public_r600_real_measurements_range_audit.json
+      - name: Publish only aggregate experimental evidence and explicit missing map fields
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-6-external-real-r600-measurements-aggregate-NOT-compressor-map
+          path: results/m1_6_public_r600_real_measurements_range_audit.json
+          if-no-files-found: error
+          retention-days: 45
+
+  public-carnot-hp-tes-archive-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # The 36 MB dataset is an independent external Zenodo object. Temporary
+    # network outages must not be reported as a model/validation failure.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify public UDE Carnot experimental ZIP from Zenodo
+        run: |
+          python scripts/audit_ude_carnot_hp_tes_archive.py \
+            --download \
+            --output results/m1_6_ude_carnot_hp_tes_archive_inventory.json
+      - name: Archive file type / metadata inventory only (no raw data)
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-6-ude-carnot-hp-tes-public-archive-inventory
+          path: results/m1_6_ude_carnot_hp_tes_archive_inventory.json
+          if-no-files-found: error
+          retention-days: 45
