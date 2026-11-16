@@ -42,7 +42,7 @@ A 128-cell execution is only an exploratory sensor-observation check, not a new 
 
 ## First source-locked Case B sensor-compatibility results
 
-The dedicated GitHub Actions job ran the target-independent exhaust-flow 1-D solver at **128 cells** (numerical grid convergence of these in-bed extrema is **not** established), on the original source-hashed Case B with 220 post-initialisation sample times. The model does not ingest measured downstream T1–T7 for forcing or calibration.
+The dedicated GitHub Actions job ran the target-independent exhaust-flow 1-D solver at **128 cells** (numerical grid convergence of these in-bed extrema is **not** established), on the original source-hashed Case B with 300 post-initialisation sample times (301 original Case B rows; initial sample excluded). The model does not ingest measured downstream T1–T7 for forcing or calibration.
 
 | Original measured TC | Fraction outside even broad gas/rock x-position extrema | Average outside distance (°C, zero for inside) | Maximum outside distance (°C) |
 |---|---:|---:|---:|
