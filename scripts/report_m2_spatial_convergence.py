@@ -17,7 +17,7 @@ def main():
     result=evaluate_resolution(raw)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
-    for name,value in zip(("8-16","16-32","32-64","64-128"),result["rms_change_K"]):
+    for name,value in zip(result["grid_pair_keys"],result["rms_change_K"]):
         print("CASE_B_REFINEMENT",name,f"outlet_RMS_K={value:.5f}")
     print("EMPIRICAL_OBSERVED_ORDERS",result["observed_order_from_outlet_RMS_doublings"])
     print("NUMERICAL_RESOLUTION_PASS",result["numerical_resolution_pass"])
