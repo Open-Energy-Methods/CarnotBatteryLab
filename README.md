@@ -203,6 +203,12 @@ An independent **one-way thermocouple observation module** now applies one commo
 
 [Read M2.1 methods and the seven-probe measured diagnostics](docs/methods/M2_DYNAMIC_TC_OBSERVATION.md). Physical validation remains source-limited and M2 open.
 
+## M2.3 variable-enthalpy and steel-shell-inertia alternative
+
+A separately implemented, **conservative** thermophysical solver now computes ideal dry-air N₂/O₂ NIST Shomate sensible enthalpy and cp(T), uses a declared hypothetical temperature-dependent slag cp(T), and models a finite **7-mm nominal steel-shell thermal capacity** and two serial rock→wall→ambient heat-transfer interfaces. The original constant-cp source-locked solver is **unchanged**.
+
+The independent synthetic four-step energy audit passed with ~**1.155 MJ** gas heat input and **0.0068 J** cumulative first-law residual. Tests verify `dh_air/dT = cp_air`, NIST segment continuity, gas/rock/wall conservation and physical guards. The actual 2024 slag batch material properties, wall UAs, gas pressure and measured flow are **not calibrated**; synthetic verification is **not external validation**. [Read M2.3 method and limitations](docs/methods/M2_VARIABLE_ENTHALPY_WALL_METHOD.md).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
