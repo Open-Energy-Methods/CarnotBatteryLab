@@ -28,6 +28,11 @@ def test_real_archive_inventory_contract_without_releasing_data():
         "relevant_metadata_or_model_file_paths"]
     assert report["complete_H_REF_80_70_110_150_map_qualified"] is False
     assert report["raw_archive_data_redistributed"] is False
+    assert report["csv_column_headers_metadata_only"][
+        "data/Experiment_01/compressor_data.csv"]["field_names"]==[
+            "TEST_ONLY"]
+    assert "data/README_overview.md" in report[
+        "readme_section_headings_metadata_only"]
 
 
 def test_archive_wrong_checksum_refused():
