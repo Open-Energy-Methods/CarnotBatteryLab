@@ -1,0 +1,48 @@
+name: m1-7-r600-original-measurements-reserved-holdout
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/r600_offdesign_holdout.py'
+      - 'scripts/run_m1_7_r600_offdesign_validation.py'
+      - 'tests/test_m1_7_r600_offdesign_holdout.py'
+      - '.github/workflows/m1-7-r600-original-measurements-reserved-holdout.yml'
+      - 'docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/r600_offdesign_holdout.py'
+      - 'scripts/run_m1_7_r600_offdesign_validation.py'
+      - 'tests/test_m1_7_r600_offdesign_holdout.py'
+      - '.github/workflows/m1-7-r600-original-measurements-reserved-holdout.yml'
+      - 'docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md'
+  workflow_dispatch:
+
+jobs:
+  r600-source-verified-experimental-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real-fluid EOS and scientific tests
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test independent operating-condition group split and efficiency meter boundaries
+        run: python -m pytest tests/test_m1_7_r600_offdesign_holdout.py tests/test_m1_6_public_data_acquisition.py tests/test_r600_transcritical_screen.py -v
+      - name: Recalculate original M1.4 H-REF demands without fitting them to measurements
+        run: |
+          python scripts/run_m1_compressor_map_requirements.py \
+            --output results/m1_compressor_map_requirements_80_70_to_110_150.json
+      - name: Verify immutable Zenodo checksum and score experimentally reserved R600 holdouts
+        run: |
+          python scripts/run_m1_7_r600_offdesign_validation.py \
+            --download \
+            --requirements results/m1_compressor_map_requirements_80_70_to_110_150.json \
+            --output results/m1_7_r600_reserved_experimental_holdout_validation.json
+      - name: Preserve aggregate-only measurement-validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-7-offtarget-measured-R600-heldout-errors-NOT-hardware-qualified
+          path: results/m1_7_r600_reserved_experimental_holdout_validation.json
+          if-no-files-found: error
+          retention-days: 60
