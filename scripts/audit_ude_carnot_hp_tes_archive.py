@@ -76,7 +76,7 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
         # prefix. Full measurement licensing and units need human review.
         headers={}
         for item in members:
-            name=item.filename.replace("\\\\","/")
+            name=item.filename.replace(chr(92),"/")
             if item.is_dir() or not name.lower().endswith(".csv"):
                 continue
             if item.file_size>150_000_000:
@@ -87,7 +87,7 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
             first=next((s for s in text.splitlines() if s.strip()),"")
             if not first:
                 continue
-            delimiters=(",", ";", "\\t")
+            delimiters=(",", ";", chr(9))
             delim=max(delimiters,key=lambda x:first.count(x))
             if first.count(delim)<1:
                 continue
