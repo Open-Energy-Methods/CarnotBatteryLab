@@ -79,6 +79,7 @@ def handoff_coupled_charge_to_reverse_discharge(
         peak_outlet=max(peak_outlet,step.time_mean_outlet_K)
         run.append({
             "interval":n+1,
+            "first_process_gas_out_K":step.first_outlet_K,
             "mean_process_gas_out_K":step.time_mean_outlet_K,
             "end_process_gas_out_K":step.final_outlet_K,
             "sampled_temperature_grade_qualified":step.screen_passed_temperature_samples,
@@ -123,6 +124,14 @@ def handoff_coupled_charge_to_reverse_discharge(
         "discharge_model_blower_electricity_J":fan,
         "total_partial_grid_electricity_J":
             charge.cumulative_electric_grid_J+fan,
+        # Expose the ACTUAL terminal field for a non-reset repeated-cycle audit.
+        # Keep it JSON-compatible for the source-controlled evidence artifact.
+        "final_bed_state":{
+            "fluid_temperature_K":list(state.fluid_temperature_K),
+            "solid_temperature_K":list(state.solid_temperature_K),
+        },
+        "all_discharge_intervals_sampled_grade_qualified":all(
+            row["sampled_temperature_grade_qualified"] for row in run),
         "final_bed_energy_J":terminal_energy,
         "discharge_energy_residual_J":residual,
         "peak_mean_process_gas_out_K":peak_outlet,

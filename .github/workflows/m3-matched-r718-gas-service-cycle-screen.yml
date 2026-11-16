@@ -1,0 +1,46 @@
+name: m3-matched-r718-gas-service-cycle-screen
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/gas_rock_regenerator.py'
+      - 'src/carnot_battery_lab/physics/sequential_hp_tes_service.py'
+      - 'src/carnot_battery_lab/physics/matched_thermal_service.py'
+      - 'tests/test_m3_outlet_initial_sample_regression.py'
+      - 'tests/test_m3_matched_thermal_service.py'
+      - 'scripts/run_m3_matched_thermal_scan.py'
+      - '.github/workflows/m3-matched-r718-gas-service-cycle-screen.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/gas_rock_regenerator.py'
+      - 'src/carnot_battery_lab/physics/sequential_hp_tes_service.py'
+      - 'src/carnot_battery_lab/physics/matched_thermal_service.py'
+      - 'tests/test_m3_outlet_initial_sample_regression.py'
+      - 'tests/test_m3_matched_thermal_service.py'
+      - 'scripts/run_m3_matched_thermal_scan.py'
+      - '.github/workflows/m3-matched-r718-gas-service-cycle-screen.yml'
+  workflow_dispatch:
+jobs:
+  corrected-grade-and-cyclic-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install numerical and real-fluid dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Verify outlet sample and fail-closed cyclic service
+        run: python -m pytest tests/test_m3_outlet_initial_sample_regression.py tests/test_m3_matched_thermal_service.py tests/test_m3_r718_sequential_service.py tests/test_m3_reverse_flow_discharge.py -v
+      - name: Publish strict short-schedule gas thermal-service screen
+        run: python scripts/run_m3_matched_thermal_scan.py --output results/m3_matched_cycle_gas_service_screen.json
+      - name: Publish same-physics original sequential evidence after outlet fix
+        run: python scripts/run_m3_r718_sequential_service.py --output results/m3_r718_sequential_hp_tes_discharge_screen.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m3-2-unqualified-matched-gas-thermal-cycle-evidence
+          path: |
+            results/m3_matched_cycle_gas_service_screen.json
+            results/m3_r718_sequential_hp_tes_discharge_screen.json
+          if-no-files-found: error
+          retention-days: 21
