@@ -121,6 +121,10 @@ def test_compressor_stage_invalid_flow_or_pressure_rejected():
         CompressorStageDemand(**{**kwargs,"suction_density_kg_m3":0.})
     with pytest.raises(ValueError):
         CompressorStageDemand(**{**kwargs,"discharge_pressure_Pa":1e5})
+    with pytest.raises(ValueError,match="inconsistent"):
+        CompressorStageDemand(**{**kwargs,"stage_pressure_ratio":3.})
+    with pytest.raises(ValueError,match="inconsistent"):
+        CompressorStageDemand(**{**kwargs,"suction_volumetric_flow_m3_s":2.})
 
 
 def test_r718_1mw_full_compressor_stage_requirements_and_trajectory():
