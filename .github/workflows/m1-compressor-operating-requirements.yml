@@ -1,0 +1,39 @@
+name: m1-compressor-operating-requirements-and-evidence
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/compressor_envelope_requirements.py'
+      - 'src/carnot_battery_lab/physics/compressor_literature_gate.py'
+      - 'scripts/run_m1_compressor_map_requirements.py'
+      - 'tests/test_m1_compressor_envelope_requirements.py'
+      - '.github/workflows/m1-compressor-operating-requirements.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/compressor_envelope_requirements.py'
+      - 'src/carnot_battery_lab/physics/compressor_literature_gate.py'
+      - 'scripts/run_m1_compressor_map_requirements.py'
+      - 'tests/test_m1_compressor_envelope_requirements.py'
+      - '.github/workflows/m1-compressor-operating-requirements.yml'
+  workflow_dispatch:
+
+jobs:
+  realfluid-compressor-demands-with-hard-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install R718 R600 real-fluid EOS and test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Verify compressor demand P T volumetric and provenance guards
+        run: python -m pytest tests/test_m1_compressor_envelope_requirements.py tests/test_r600_transcritical_screen.py tests/test_r718_realfluid.py -v
+      - name: Generate verified-solver requirements and literature dossier
+        run: python scripts/run_m1_compressor_map_requirements.py --output results/m1_compressor_map_requirements_80_70_to_110_150.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-4-compressor-demands-literature-crosswalk-NOT-hardware-qualified
+          path: results/m1_compressor_map_requirements_80_70_to_110_150.json
+          if-no-files-found: error
+          retention-days: 45
