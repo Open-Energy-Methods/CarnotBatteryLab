@@ -110,6 +110,20 @@ def main():
               "motor_raw_unverified_units",x["motor_power_logger_units_UNCONFIRMED"],
               "speed_raw_unverified_units",
               x["compressor_speed_logger_units_UNCONFIRMED"])
+    processed=d["processed_six_r600_original_measured_experiment_summaries"]
+    print("M1_8_UDE_PROCESSED_NBUTANE_SOURCE_MEANS",
+          processed["candidate_original_pure_nbutane_record_count"],
+          "EOS_VALID",processed["pure_nbutane_measured_EOS_eligible_points"],
+          "FILTERED",processed["rejected_original_nbutane_rows_by_reason"])
+    print("M1_8_UDE_EXPERIMENTALLY_DERIVED_ELECTRIC_ETA",
+          processed["isentropic_efficiency_recomputed_from_shared_source_measurements"])
+    print("M1_8_UDE_ORIGINAL_FIXED_ELECTRIC_HYPOTHESIS",
+          "MAE",processed["reference_M1_7_0_68894_electrical_eta_absolute_error_mean"],
+          "RMSE",processed["reference_M1_7_0_68894_electrical_eta_RMSE"])
+    print("M1_8_UDE_ORIGINAL_RUN_CROSSVALIDATION",
+          processed["experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation"])
+    print("M1_8_UDE_R600_SOURCE_MEASURED_PRESSURES",
+          processed["suction_pressure_Pa"],processed["discharge_pressure_Pa"])
     print("M1_8_LEAVE_ONE_RUN_OUT_HULL_SUPPORT",
           d["leave_one_ENTIRE_run_out_support_checks"])
     print("M1_8_IN_ENVELOPE_PREDICTIVE_VALIDATION",
