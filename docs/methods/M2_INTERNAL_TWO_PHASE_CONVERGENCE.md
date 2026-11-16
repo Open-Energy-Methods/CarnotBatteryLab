@@ -33,6 +33,21 @@ Linear interpolation of finite-volume cell-centre temperatures is used consisten
 
 A provisional <1 K maximum *RMS mesh-to-mesh* increment across all 14 positions is reported as an **engineering-resolution screening choice**, not an experimentally measured uncertainty or proof of valid sensor response. Full in-bed mathematical convergence also requires time refinement, true sensor coordinates, source-property qualification and horizontal-flow structural error analysis.
 
+## Actual source-locked 2024 Case B numerical outcome
+
+The dedicated 512-cell GitHub Actions workflow run **43841260535** passed its 21 targeted tests, independently regenerated the source-hashed five-grid trajectories and confirmed:
+
+| Pair | Worst gas-history RMS at seven fixed coordinates | Worst rock-history RMS |
+|---|---:|---:|
+| 32→64 | 4.10096 K | 3.96737 K |
+| 64→128 | 2.18086 K | 2.10890 K |
+| 128→256 | 1.12571 K | 1.08831 K |
+| 256→512 | **0.57191 K** | **0.55281 K** |
+
+Thus, for this prescribed **target-independent exhaust-flow model and nominal assumed coordinates**, the final mesh doubling meets the provisional **1 K** whole-history RMS *numerical* increment screen for **both gas and rock at all seven points**. Values decrease across the observed series; this is consistent with expected first-order spatial refinement. We do not declare a maximum local error below 1 K, do not extrapolate an exact spatial solution, and do not assert measurement-error bounds.
+
+No calibrated 2024 probe coordinates, mixed-phase time-response parameters or experimental model accuracy follow from this result. The outlet experiment discrepancy remains large despite excellent numerical convergence.
+
 ## Diagnostics and claim control
 
 - Source DOI/hash, fixed x-coordinates and all five meshes are checked before reporting comparison.
