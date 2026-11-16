@@ -39,6 +39,27 @@ jobs:
             --download \
             --requirements results/m1_compressor_map_requirements_80_70_to_110_150.json \
             --output results/m1_7_r600_reserved_experimental_holdout_validation.json
+      - name: Assert original source outcomes and prohibit hardware certification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('results/m1_7_r600_reserved_experimental_holdout_validation.json').read_text())
+          h=d['holdout_experimental_validation']
+          assert d['genuine_pure_butane_measured_count']==20
+          assert h['reserved_holdout_count']==5
+          assert h['reserved_holdout_within_training_convex_hull']==1
+          assert h['reserved_holdout_outside_training_convex_hull']==4
+          assert d['fixed_reference_offtarget_benchmark_status']=='OFFTARGET_FIXED_ELECTRIC_REFERENCE_NOT_CORROBORATED_AT_0_05_MAE'
+          mae=h['metrics']['electric_isentropic_efficiency']['fixed_M1_4_reference']['MAE']
+          assert abs(mae-.06652)<1e-7
+          assert not d['M1_5_hardware_map_qualified']
+          assert not d['reference_1MW_H_REF_process_heat_qualified']
+          assert all(not x['inside_all_three_external_measured_marginal_ranges']
+            for x in d['H_REF_R600_model_pressure_scan_vs_experimental_range'])
+          assert d['matched_service_architecture_RTE'] is None
+          print("M1_7_SOURCE_FROZEN_NEGATIVE_RESULT_AND_NO_HARDWARE_PROMOTION_VERIFIED")
+          PY
       - name: Preserve aggregate-only measurement-validation evidence
         uses: actions/upload-artifact@v4
         with:
