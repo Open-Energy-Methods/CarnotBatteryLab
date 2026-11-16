@@ -28,7 +28,7 @@ def demand(stage="stage1", *, p=100000.,ratio=2.,v=1.):
         suction_pressure_Pa=p,discharge_pressure_Pa=p*ratio,
         suction_temperature_C=80.,discharge_temperature_C=150.,
         stage_pressure_ratio=ratio,refrigerant_mass_flow_kg_s=1.,
-        suction_density_kg_m3=1.,suction_volumetric_flow_m3_s=v,
+        suction_density_kg_m3=1./v,suction_volumetric_flow_m3_s=v,
         shaft_power_W_idealized=100000.)
 
 
