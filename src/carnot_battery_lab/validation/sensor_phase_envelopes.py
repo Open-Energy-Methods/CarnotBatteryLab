@@ -95,8 +95,11 @@ def sensor_phase_position_envelope(
     # Finite volume model states are cell averages. The allowed probe
     # segment intersects every cell in the interval. Including cells at
     # exact boundary intersections is deliberately conservative.
-    i0=max(0,min(len(gas_C)-1,int(math.floor(lo/dz))))
-    i1=max(i0,min(len(gas_C)-1,int(math.floor(hi/dz))))
+    # A physically possible sensor exactly on an interface may contact
+    # either neighbouring finite volume. Include both, with a tiny
+    # dimensionless epsilon to avoid 0.1/0.1 rounding down to 0.
+    i0=max(0,min(len(gas_C)-1,int(math.floor(lo/dz-1e-12))))
+    i1=max(i0,min(len(gas_C)-1,int(math.floor(hi/dz+1e-12))))
     touched=tuple(range(i0,i1+1))
     values=[gas_C[i] for i in touched]+[solid_C[i] for i in touched]
     return PhasePositionEnvelope(
