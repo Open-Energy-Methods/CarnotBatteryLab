@@ -24,7 +24,7 @@ def test_real_archive_inventory_contract_without_releasing_data():
     assert report["zip_entries_total"]==4
     assert report["by_extension"][".csv"]==2
     assert report["by_extension"][".py"]==1
-    assert "README_overview.md" in report[
+    assert "data/README_overview.md" in report[
         "relevant_metadata_or_model_file_paths"]
     assert report["complete_H_REF_80_70_110_150_map_qualified"] is False
     assert report["raw_archive_data_redistributed"] is False
