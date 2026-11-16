@@ -1,0 +1,69 @@
+name: m1-7-r600-original-measurements-reserved-holdout
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/r600_offdesign_holdout.py'
+      - 'scripts/run_m1_7_r600_offdesign_validation.py'
+      - 'tests/test_m1_7_r600_offdesign_holdout.py'
+      - '.github/workflows/m1-7-r600-original-measurements-reserved-holdout.yml'
+      - 'docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/r600_offdesign_holdout.py'
+      - 'scripts/run_m1_7_r600_offdesign_validation.py'
+      - 'tests/test_m1_7_r600_offdesign_holdout.py'
+      - '.github/workflows/m1-7-r600-original-measurements-reserved-holdout.yml'
+      - 'docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md'
+  workflow_dispatch:
+
+jobs:
+  r600-source-verified-experimental-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real-fluid EOS and scientific tests
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test independent operating-condition group split and efficiency meter boundaries
+        run: python -m pytest tests/test_m1_7_r600_offdesign_holdout.py tests/test_m1_6_public_data_acquisition.py tests/test_r600_transcritical_screen.py -v
+      - name: Recalculate original M1.4 H-REF demands without fitting them to measurements
+        run: |
+          python scripts/run_m1_compressor_map_requirements.py \
+            --output results/m1_compressor_map_requirements_80_70_to_110_150.json
+      - name: Verify immutable Zenodo checksum and score experimentally reserved R600 holdouts
+        run: |
+          python scripts/run_m1_7_r600_offdesign_validation.py \
+            --download \
+            --requirements results/m1_compressor_map_requirements_80_70_to_110_150.json \
+            --output results/m1_7_r600_reserved_experimental_holdout_validation.json
+      - name: Assert original source outcomes and prohibit hardware certification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('results/m1_7_r600_reserved_experimental_holdout_validation.json').read_text())
+          h=d['holdout_experimental_validation']
+          assert d['genuine_pure_butane_measured_count']==20
+          assert h['reserved_holdout_count']==5
+          assert h['reserved_holdout_within_training_convex_hull']==1
+          assert h['reserved_holdout_outside_training_convex_hull']==4
+          assert d['fixed_reference_offtarget_benchmark_status']=='OFFTARGET_FIXED_ELECTRIC_REFERENCE_NOT_CORROBORATED_AT_0_05_MAE'
+          mae=h['metrics']['electric_isentropic_efficiency']['fixed_M1_4_reference']['MAE']
+          assert abs(mae-.06652)<1e-7
+          assert not d['M1_5_hardware_map_qualified']
+          assert not d['reference_1MW_H_REF_process_heat_qualified']
+          assert all(not x['inside_all_three_external_measured_marginal_ranges']
+            for x in d['H_REF_R600_model_pressure_scan_vs_experimental_range'])
+          assert d['matched_service_architecture_RTE'] is None
+          print("M1_7_SOURCE_FROZEN_NEGATIVE_RESULT_AND_NO_HARDWARE_PROMOTION_VERIFIED")
+          PY
+      - name: Preserve aggregate-only measurement-validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-7-offtarget-measured-R600-heldout-errors-NOT-hardware-qualified
+          path: results/m1_7_r600_reserved_experimental_holdout_validation.json
+          if-no-files-found: error
+          retention-days: 60

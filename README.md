@@ -250,6 +250,10 @@ See [M1.5 map acceptance methodology](docs/methods/M1_5_MEASURED_MAP_ACCEPTANCE.
 
 Open original compressor and Carnot-battery heat-pump/TES measurements are now source-audited separately from synthetic manufacturer-polynomial data. A fixed-checksum ETH/OST n-butane experimental dataset is compared with the exact M1.4 R600 compressor requirements, while the University of Duisburg-Essen independent HP/TES experiment archive is inventoried without publishing third-party raw data. Both provide **off-target validation opportunities**, not a measured 80→70°C / 110→150°C, 1 MW H-REF compressor map. The M1.5 hardware acceptance gate remains open. See [M1.6 acquisition and research ethics](docs/methods/M1_6_PUBLIC_EXPERIMENTAL_DATA_ACQUISITION.md).
 
+### M1.7 R600 out-of-sample experiment — other compressor, not H-REF hardware qualification
+
+The independent OST Buchs n-butane compressor campaign is now tested with a frozen, **condition-disjoint five-group reserved holdout**. The original M1.4 shaft-efficiency hypothesis is converted to its matching **overall electrical** meter boundary (0.74 × 0.95 × 0.98 = 0.68894), then compared with actual measured `eta_is,electric`; a training-only 2-parameter pressure-ratio ridge fit serves as a separately labelled exploratory comparator. Training-hull membership, observed volumetric efficiency and CoolProp ideal-work sanity are audited. No synthetic manufacturer-polynomial records, pure/mixture mixing, data leakage or target compressor-map extrapolation are permitted. See [M1.7 scientific validation methodology](docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md). H-REF equipment and architecture-viability gates remain blocked.
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
