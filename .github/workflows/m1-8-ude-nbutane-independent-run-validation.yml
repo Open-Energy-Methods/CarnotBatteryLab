@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'scripts/inspect_ude_r600_run_metadata.py'
+      - 'scripts/inspect_ude_processed_table_fields.py'
       - 'scripts/run_m1_8_ude_r600_validation.py'
       - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
       - 'tests/test_m1_8_ude_r600_run_validation.py'
@@ -11,6 +12,7 @@ on:
   pull_request:
     paths:
       - 'scripts/inspect_ude_r600_run_metadata.py'
+      - 'scripts/inspect_ude_processed_table_fields.py'
       - 'scripts/run_m1_8_ude_r600_validation.py'
       - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
       - 'tests/test_m1_8_ude_r600_run_validation.py'
@@ -67,6 +69,17 @@ jobs:
           path: results/m1_8_ude_original_nbutane_run_level_validation.json
           if-no-files-found: error
           retention-days: 60
+      - name: Audit multirow processed experiment sensor metadata and Bitzer logger discrepancies
+        run: |
+          python scripts/inspect_ude_processed_table_fields.py \
+            --download --output results/m1_8_ude_processed_table_field_metadata.json
+      - name: Preserve only table headers and numeric channel counts, not sensor histories
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-8-ude-processed-column-headings-and-device-diagnostics
+          path: results/m1_8_ude_processed_table_field_metadata.json
+          if-no-files-found: error
+          retention-days: 45
       - name: Upload metadata only not original source data
         uses: actions/upload-artifact@v4
         with:
