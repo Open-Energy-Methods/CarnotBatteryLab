@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from hashlib import md5,sha256
 import io
+import csv
 import json
 from pathlib import Path
 from zipfile import ZipFile,BadZipFile
@@ -70,6 +71,47 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
                    ("readme","compressor","model","metadata","calibrat",
                     "steady","mean")):
                 relevant.append(name)
+        # Read FIELD NAMES only, never copy measured time-series observations.
+        # Metadata entries can be large; limit decompression/read to bounded
+        # prefix. Full measurement licensing and units need human review.
+        headers={}
+        for item in members:
+            name=item.filename.replace("\\\\","/")
+            if item.is_dir() or not name.lower().endswith(".csv"):
+                continue
+            if item.file_size>150_000_000:
+                continue
+            with zipfile.open(item) as source:
+                prefix=source.read(8192)
+            text=prefix.decode("utf-8-sig",errors="replace")
+            first=next((s for s in text.splitlines() if s.strip()),"")
+            if not first:
+                continue
+            delimiters=(",", ";", "\\t")
+            delim=max(delimiters,key=lambda x:first.count(x))
+            if first.count(delim)<1:
+                continue
+            fields=next(csv.reader([first],delimiter=delim))
+            # Header names are non-record metadata, not released values.
+            headers[name]={
+                "delimiter":delim,
+                "field_count":len(fields),
+                "field_names":fields[:80],
+                "header_preview_truncated":len(fields)>80,
+            }
+        readme_headers={}
+        for name in (
+            "data/README_overview.md",
+            "data/GitLab Code/README_code.md",
+            "data/compressor-model (Welp)/README.txt",
+        ):
+            if name not in seen:
+                continue
+            with zipfile.open(name) as source:
+                text=source.read(120_000).decode("utf-8-sig",errors="replace")
+            lines=[s.strip() for s in text.splitlines()
+                   if s.strip().startswith(("#","* "))]
+            readme_headers[name]=lines[:40]
         return {
             "status":"UDE_OPEN_ARCHIVE_CHECKSUM_AND_MANIFEST_INSPECTED_ONLY",
             "doi":DOI,"source":URL,"source_md5":expected_md5,
@@ -78,6 +120,8 @@ def inspect_archive(raw:bytes,expected_md5:str=PUBLISHED_MD5)->dict:
             "by_extension":inventory,
             "relevant_metadata_or_model_file_paths":sorted(relevant)[:120],
             "relevant_metadata_or_model_path_count":len(relevant),
+            "csv_column_headers_metadata_only":headers,
+            "readme_section_headings_metadata_only":readme_headers,
             "raw_sensor_time_series_checked_for_units":False,
             "compressor_map_columns_and_uncertainties_accepted":False,
             "complete_H_REF_80_70_110_150_map_qualified":False,
@@ -104,6 +148,13 @@ def main():
           "ENTRIES",obj["zip_entries_total"],
           "SUFFIXES",obj["by_extension"],
           "RELEVANT_PATHS",obj["relevant_metadata_or_model_file_paths"][:60])
+    print("UDE_CSV_METADATA_FILES",len(obj["csv_column_headers_metadata_only"]))
+    for key,item in obj["csv_column_headers_metadata_only"].items():
+        if any(s in key.casefold() for s in
+               ("compressor", "metadata", "experimental", "measurement")):
+            print("UDE_METADATA_HEADER",key,item["field_names"][:55])
+    print("UDE_README_SECTION_HEADINGS",
+          obj["readme_section_headings_metadata_only"])
     print("UDE_H_REF_COMPRESSOR_MAP_QUALIFIED=False")
 
 
