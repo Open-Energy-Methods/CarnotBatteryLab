@@ -58,6 +58,8 @@ jobs:
           p=u["processed_six_r600_original_measured_experiment_summaries"]
           assert p["candidate_original_pure_nbutane_record_count"]==6
           assert p["pure_nbutane_measured_EOS_eligible_points"]==6
+          assert u["processed_pure_nbutane_experiment_summaries_count_gate_ge_5"]
+          assert u["processed_pure_nbutane_heldout_same_frequency_hull_coverage_count"]==0
           assert abs(p["isentropic_efficiency_recomputed_from_shared_source_measurements"]["mean"]-.4445350734379265)<2e-4
           assert abs(p["reference_M1_7_0_68894_electrical_eta_absolute_error_mean"]-.24440492656207352)<2e-4
           cv=p["experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation"]
