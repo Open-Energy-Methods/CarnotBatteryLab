@@ -1,0 +1,40 @@
+name: m2-source-sensor-observation
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/validation/sensor_phase_envelopes.py'
+      - 'scripts/study_case_B_sensor_phase_envelopes.py'
+      - 'scripts/plot_m2_sensor_phase_envelopes.py'
+      - 'tests/test_m2_sensor_phase_envelopes.py'
+      - '.github/workflows/m2-source-sensor-observation.yml'
+  workflow_dispatch:
+jobs:
+  measured-TC-contact-extrema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install numerical and plotting environment
+        run: python -m pip install -e ".[test,physics]" "matplotlib>=3.8"
+      - name: Verify phase/position source contract and fail closed on invalid sensor evidence
+        run: python -m pytest tests/test_m2_sensor_phase_envelopes.py -v
+      - name: Retrieve source-hashed 2024 original experimental CSV
+        run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
+      - name: Case B source-sampled T1-T7 source-contact extrema at 128 cells (not validated)
+        run: python scripts/study_case_B_sensor_phase_envelopes.py --input-dir results/external_horizontal_bed --cells 128 --output results/external_horizontal_bed/case_B_TC_phase_position_diagnostic.json
+      - name: Render illustrative T1/T4/T7 comparisons with non-validation captions
+        run: python scripts/plot_m2_sensor_phase_envelopes.py --input results/external_horizontal_bed/case_B_TC_phase_position_diagnostic.json --output-dir results/external_horizontal_bed/tc_envelope_figures
+      - name: Archive original source provenance, numeric diagnostic and images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m2-case-B-mixed-phase-observation-not-validated
+          path: |
+            results/external_horizontal_bed/provenance.json
+            results/external_horizontal_bed/case_B_TC_phase_position_diagnostic.json
+            results/external_horizontal_bed/tc_envelope_figures/*.png
+          if-no-files-found: error
+          retention-days: 21
