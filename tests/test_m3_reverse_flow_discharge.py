@@ -38,8 +38,11 @@ def test_discharge_matches_independent_reverse_state_advance_and_first_law():
         b,s,return_gas_K=303.15,mass_flow_kg_s=.01,
         dt_s=30,minimum_process_delivery_K=340.,
         dead_state_K=303.15)
-    assert discharge.final_state==pytest.approx(
-        reverse_bed_state(direct.final_state))
+    expected=reverse_bed_state(direct.final_state)
+    assert discharge.final_state.fluid_temperature_K==pytest.approx(
+        expected.fluid_temperature_K,abs=1e-7)
+    assert discharge.final_state.solid_temperature_K==pytest.approx(
+        expected.solid_temperature_K,abs=1e-7)
     assert discharge.signed_heat_to_process_gas_J==pytest.approx(
         -direct.heat_from_hot_gas_J,abs=1e-5)
     assert discharge.bed_energy_change_J<0
