@@ -23,24 +23,25 @@ def assess(historic:dict,independent:dict)->dict:
             raise ValueError(f"{name} original Case B checksum mismatch")
     if independent.get("source_doi")!=SOURCE_DOI or independent.get("case")!="B_only":
         raise ValueError("wrong independent-source DOI/run")
-    if historic.get("case")!="B_only":
+    if historic.get("doi")!=SOURCE_DOI or historic.get("source_case")!="B_only":
         raise ValueError("wrong historical-source run")
     if independent.get("measured_Tout_excluded_from_physics") is not True:
         raise ValueError("measured temperature leaked into independent forward forcing")
-    if historic.get("measured_Tout_used_in_mass_flow") is not True:
+    if not historic.get("flow_target_leakage_warning"):
         raise ValueError("historical mass-flow evidence not clearly classified")
     independent_grid=independent["refinement"]
-    historic_grid=historic["refinement"]
-    for candidate in (independent_grid,historic_grid):
-        if not isinstance(candidate.get("provisional_spatial_screen_pass"),bool):
-            raise ValueError("source-locked numerical pass/fail report absent")
-        if candidate.get("predictive_experimental_validation_pass") is not False:
-            raise ValueError("unqualified experimental validation claim")
+    historic_grid=historic["refinement_evidence"]
+    if not isinstance(independent_grid.get("provisional_spatial_screen_pass"),bool) or not isinstance(
+        historic_grid.get("provisional_numerical_increment_pass_at_512"),bool):
+        raise ValueError("source-locked numerical pass/fail reports absent")
+    if independent_grid.get("predictive_experimental_validation_pass") is not False or (
+        historic_grid.get("external_physical_validation_pass") is not False):
+        raise ValueError("unqualified experimental validation claim")
     return {
         "scientific_status":"PHYSICAL_VALIDATION_BLOCKED_INSTRUMENT_METADATA",
         "doi":SOURCE_DOI,
         "raw_case_B_sha256":CASE_B_SHA,
-        "historical_mesh_provisional_pass":historic_grid["provisional_spatial_screen_pass"],
+        "historical_mesh_provisional_pass":historic_grid["provisional_numerical_increment_pass_at_512"],
         "target_independent_mesh_provisional_pass":independent_grid["provisional_spatial_screen_pass"],
         "target_independent_exhaust_flow_exists":True,
         "target_independent_mass_flow_measured_and_calibrated":False,
