@@ -73,7 +73,7 @@ def synth_map(stage="stage1", *,bad_holdout=False,
         observation("fit"+str(i),"fit",x) for i,x in enumerate(fit)
     )+tuple(
         observation("holdout"+str(i),"holdout",x,
-                    bad_power=20000. if bad_holdout and i==1 else 0.)
+                    bad_power=8000. if bad_holdout and i==1 else 0.)
         for i,x in enumerate(holdout)
     )
     evidence=MapEvidence(
