@@ -36,9 +36,11 @@ The default **declared screening thresholds**, not data-fitted uncertainties or 
 
 | Quantity | Default model / map comparison | Held-out measured comparison |
 |---|---:|---|
-| Refrigerant mass flow | ≤5% relative discrepancy | max(5%, 3×reported relative standard uncertainty) |
-| Compressor shaft power | ≤5% relative discrepancy | max(5%, 3×reported relative standard uncertainty) |
-| Discharge temperature | ≤5 K absolute discrepancy | max(5 K, 3×reported standard uncertainty) |
+| Refrigerant mass flow | ≤5% relative discrepancy | Must meet **both** 5% and 3×reported relative standard uncertainty |
+| Compressor shaft power | ≤5% relative discrepancy | Must meet **both** 5% and 3×reported relative standard uncertainty |
+| Discharge temperature | ≤5 K absolute discrepancy | Must meet **both** 5 K and 3×reported standard uncertainty |
+
+Before screening, maps with declared standard measurement uncertainties greater than **3%** for mass flow or shaft power or **2 K** for discharge temperature are also rejected. These are provisional evidence-quality requirements, not universal instrumentation standards. Larger claimed uncertainties **cannot** relax the 5%/5 K cap.
 
 The match is also rejected if the model or interpolated output exceeds a declared machine limit for rpm, discharge pressure, pressure ratio, discharge temperature or shaft power. A map may therefore fail because of **no matching machine**, **no holdout validation**, **model outside measured convex hull**, **model disagreement**, or **machine ratings exceeded**. This is not a compressor design optimizer. The chosen 5%/5 K thresholds are transparent, provisional research rules and **not** a certification or an uncertainty interval validated for all technologies.
 
