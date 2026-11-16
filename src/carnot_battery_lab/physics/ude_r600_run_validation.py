@@ -87,7 +87,8 @@ def read_original_bitzer_run(source:bytes,*,filename:str,run_id:str)->RunSummary
     ratios=[]
     for row in reader:
         observations+=1
-        if None in row:raise ValueError("source CSV row column count changed")
+        if None in row or any(v is None for v in row.values()):
+            raise ValueError("source CSV row column count changed")
         fluid=(row["Refrigerant"] or "").strip()
         if fluid:fluid_names.add(fluid)
         datum={k:_numeric(row[k]) for k in MEASURED_CHANNELS}
