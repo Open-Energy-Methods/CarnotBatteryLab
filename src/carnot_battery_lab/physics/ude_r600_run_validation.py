@@ -205,6 +205,19 @@ def audit_original_ude_archive(raw:bytes,expected_md5:str=UDE_MD5)->dict:
                 reading=s.read()
             findings.append(read_original_bitzer_run(
                 reading,filename=path.rsplit("/",1)[-1],run_id=run_id))
+    # Processed experimental means contain six original butane conditions;
+    # only three of them have separate sparse Bitzer controller logs. Original
+    # model source code is NOT opened or used for these EOS calculations.
+    with ZipFile(io.BytesIO(raw)) as archive:
+        path="data/CSV_mirror/experimental_data.CSV"
+        if path not in archive.namelist():
+            raise ValueError("original UDE processed experiment summary absent")
+        with archive.open(path) as source:
+            processed_bytes=source.read(1_000_000)
+    from carnot_battery_lab.physics.ude_r600_processed_means import (
+        audit_processed_experiment_summaries,
+    )
+    processed=audit_processed_experiment_summaries(processed_bytes)
     runs=[r.__dict__ for r in findings]
     grouped=[]
     for chosen in findings:
@@ -237,6 +250,8 @@ def audit_original_ude_archive(raw:bytes,expected_md5:str=UDE_MD5)->dict:
         "original_file_label_not_independent_fluid_verification":True,
         "raw_correlated_time_sample_count_not_independent":total,
         "experimental_run_ids":list(EXPECTED_RUN_IDS),
+        "processed_six_r600_original_measured_experiment_summaries":processed,
+        "separate_raw_bitzer_log_run_count_not_entire_R600_dataset":len(findings),
         "run_sensor_aggregate_only":runs,
         "leave_one_ENTIRE_run_out_support_checks":grouped,
         "independent_runs_required_for_preregistered_envelope_gate":
