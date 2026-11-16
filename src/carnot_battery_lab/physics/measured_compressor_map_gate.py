@@ -147,6 +147,9 @@ class MapThresholds:
     maximum_shaft_power_relative_error: float = 0.05
     maximum_discharge_temperature_difference_K: float = 5.0
     maximum_holdout_normalized_error: float = 3.0
+    maximum_reported_flow_standard_uncertainty: float = 0.03
+    maximum_reported_shaft_standard_uncertainty: float = 0.03
+    maximum_reported_temperature_standard_uncertainty_K: float = 2.0
 
     def __post_init__(self):
         values=(
@@ -154,12 +157,18 @@ class MapThresholds:
             self.maximum_shaft_power_relative_error,
             self.maximum_discharge_temperature_difference_K,
             self.maximum_holdout_normalized_error,
+            self.maximum_reported_flow_standard_uncertainty,
+            self.maximum_reported_shaft_standard_uncertainty,
+            self.maximum_reported_temperature_standard_uncertainty_K,
         )
         if (not all(_positive(v) for v in values) or
             self.maximum_mass_flow_relative_error>0.2 or
             self.maximum_shaft_power_relative_error>0.2 or
             self.maximum_discharge_temperature_difference_K>20 or
-            self.maximum_holdout_normalized_error>5):
+            self.maximum_holdout_normalized_error>5 or
+            self.maximum_reported_flow_standard_uncertainty>0.05 or
+            self.maximum_reported_shaft_standard_uncertainty>0.05 or
+            self.maximum_reported_temperature_standard_uncertainty_K>5.):
             raise ValueError("unreasonable interpolation/holdout screening tolerances")
 
 
@@ -278,6 +287,20 @@ def validate_holdouts(m:CompressorMap, thresholds:MapThresholds)->dict:
     """HOLDOUT points must not appear among interpolated FIT samples."""
     rows=[]
     heldout=[x for x in m.points if x.role=="holdout"]
+    low_quality=[x.point_id for x in m.points if (
+        x.flow_relative_standard_uncertainty>
+            thresholds.maximum_reported_flow_standard_uncertainty or
+        x.shaft_relative_standard_uncertainty>
+            thresholds.maximum_reported_shaft_standard_uncertainty or
+        x.discharge_temperature_standard_uncertainty_K>
+            thresholds.maximum_reported_temperature_standard_uncertainty_K)]
+    if low_quality:
+        return {
+            "passed":False,"heldout_count":len(heldout),
+            "status":"DECLARED_MEASUREMENT_UNCERTAINTY_TOO_LARGE",
+            "points_above_declared_uncertainty_limit":low_quality,
+            "details":[],
+        }
     for test in heldout:
         line=[x for x in m.points if x.role=="fit" and x.speed_rpm==test.speed_rpm]
         weights=_convex_weights_at_fixed_speed(_coordinate_tuple(test),line)
@@ -288,15 +311,18 @@ def validate_holdouts(m:CompressorMap, thresholds:MapThresholds)->dict:
         mass_error=abs(predicted["refrigerant_mass_flow_kg_s"]-test.refrigerant_mass_flow_kg_s)
         shaft_error=abs(predicted["shaft_power_W"]-test.shaft_power_W)
         discharge_error=abs(predicted["discharge_temperature_C"]-test.discharge_temperature_C)
-        flow_limit=max(
+        # BOTH a hard screening discrepancy limit AND uncertainty-adjusted
+        # residual must pass. A high declared uncertainty must never make a
+        # bad map easier to accept.
+        flow_limit=min(
             thresholds.maximum_mass_flow_relative_error*test.refrigerant_mass_flow_kg_s,
             thresholds.maximum_holdout_normalized_error*
                 test.flow_relative_standard_uncertainty*test.refrigerant_mass_flow_kg_s)
-        power_limit=max(
+        power_limit=min(
             thresholds.maximum_shaft_power_relative_error*test.shaft_power_W,
             thresholds.maximum_holdout_normalized_error*
                 test.shaft_relative_standard_uncertainty*test.shaft_power_W)
-        temperature_limit=max(
+        temperature_limit=min(
             thresholds.maximum_discharge_temperature_difference_K,
             thresholds.maximum_holdout_normalized_error*
                 test.discharge_temperature_standard_uncertainty_K)
