@@ -98,7 +98,7 @@ def main():
     print("M1_8_SOURCE_OST_MAE_FROZEN",
           preserved["original_M1_7_fixed_reference_holdout_MAE"])
     print("M1_8_UDE_VERIFIED_EXPERIMENTAL_RUNS",
-          d["independent_original_R600_run_count"],
+          d["source_filename_labeled_nbutane_run_count"],
           "CORRELATED_RECORDS",d["raw_correlated_time_sample_count_not_independent"])
     for x in d["run_sensor_aggregate_only"]:
         print("M1_8_UDE_RUN_SENSOR_AGGREGATE",
