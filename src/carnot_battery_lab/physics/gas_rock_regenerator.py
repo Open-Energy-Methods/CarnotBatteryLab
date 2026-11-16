@@ -195,7 +195,11 @@ def advance_bed(
     qwall=float(y[2*n+1])
     residual=delta_u-qgas+qwall
     mean_out=float(inlet_K-qgas/(mcp*dt_s)) if mcp>0 else float(y[n-1])
+    # t=0 outlet is the downstream cell (x=L) for the forward-flow
+    # finite-volume solver, NOT the first/inlet cell. Reverse-flow
+    # discharge flips the complete state, so this remains the physical
+    # discharge outlet at x=0 after reversal.
     return BedStep(final,float(inlet_K),mean_out,
-                   state.fluid_temperature_K[0],float(y[n-1]),
+                   state.fluid_temperature_K[-1],float(y[n-1]),
                    qgas,qwall,delta_u,residual,pressure_drop,blower,
                    re,nu,h,int(sol.nfev))
