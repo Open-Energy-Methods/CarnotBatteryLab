@@ -61,7 +61,7 @@ def test_invalid_sensor_placement_or_phase_assumption_rejected():
 
 def test_numpy_scalar_diagnostic_serializes_for_source_archive():
     import json
-    import numpy as np
+    np=pytest.importorskip("numpy",reason="numpy optional in foundation test job; exercised in physics CI")
     a=sensor_phase_position_envelope(
         np.asarray((100.,100.),dtype=np.float64),
         np.asarray((30.,30.),dtype=np.float64),0)
