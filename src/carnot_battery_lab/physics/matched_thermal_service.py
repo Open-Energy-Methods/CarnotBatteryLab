@@ -143,9 +143,27 @@ def screen_one_schedule(
             abs(handoff["discharge_wall_loss_J"]))
         if abs(cycle_residual)>1e-5*scale:
             raise RuntimeError("combined charge-discharge storage first-law failure")
+        # At t=0, reverse-flow gas leaves physical x=0. The sample-grade
+        # requirement cannot be met unless this endpoint itself is already
+        # at least the specified process outlet temperature. This condition
+        # is necessary for the sampled contract, not sufficient for duty,
+        # persistence, machine feasibility or cyclic closure.
+        first_outlet_start_K=charge.final_bed.fluid_temperature_K[0]
         records.append({
             "cycle":i+1,
             "status":"NUMERICAL_CYCLE_COMPLETED",
+            "first_discharge_outlet_before_flow_K":first_outlet_start_K,
+            "initial_outlet_temperature_deficit_K":max(
+                0.,process_service.required_supply_K-first_outlet_start_K),
+            "initial_outlet_grade_necessary_condition":bool(
+                first_outlet_start_K>=process_service.required_supply_K),
+            "post_charge_max_rock_temperature_K":max(
+                charge.final_bed.solid_temperature_K),
+            "last_charge_hot_gas_supply_K":charge.steps[-1].hot_gas_in_C+273.15,
+            "last_charge_condenser_saturation_K":
+                charge.steps[-1].condenser_saturation_C+273.15,
+            "max_nominal_R718_stage_pressure_ratio_across_charge":max(
+                ratio for s in charge.steps for ratio in s.compressor_stage_ratios),
             "start_bed_state":bed_state_dict(before),
             "post_charge_bed_state":bed_state_dict(charge.final_bed),
             "final_bed_state":bed_state_dict(state),
