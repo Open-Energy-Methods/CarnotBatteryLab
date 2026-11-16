@@ -81,7 +81,13 @@ def advance_reverse_discharge(
         raise ValueError("process delivery threshold must exceed process return")
     # Reversing gas AND rock arrays implements physical opposite-direction
     # flow on a uniform symmetric bed without altering any energy capacity.
-    if abs(bed_energy_J(bed,reverse_bed_state(state))-bed_energy_J(bed,state))>1e-6:
+    energy_before=float(bed_energy_J(bed,state))
+    energy_reversed=float(bed_energy_J(bed,reverse_bed_state(state)))
+    # Spatial reversal changes the summation order. Large industrial-sized
+    # beds have O(1e11 J) absolute energy; floating-point roundoff must be
+    # measured relatively, not against an unjustified 1e-6 J fixed limit.
+    if abs(energy_reversed-energy_before)>1e-12*max(
+            1.,abs(energy_before),abs(energy_reversed)):
         raise RuntimeError("symmetric-reverse inventory conservation failed")
     flipped=reverse_bed_state(state)
     step=advance_bed(bed,flipped,inlet_K=return_gas_K,
