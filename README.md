@@ -246,6 +246,10 @@ The M1.4 real-fluid operating demands can now be tested against separately suppl
 
 See [M1.5 map acceptance methodology](docs/methods/M1_5_MEASURED_MAP_ACCEPTANCE.md).
 
+### M1.6 authentic experimental-data acquisition — no target-map qualification
+
+Open original compressor and Carnot-battery heat-pump/TES measurements are now source-audited separately from synthetic manufacturer-polynomial data. A fixed-checksum ETH/OST n-butane experimental dataset is compared with the exact M1.4 R600 compressor requirements, while the University of Duisburg-Essen independent HP/TES experiment archive is inventoried without publishing third-party raw data. Both provide **off-target validation opportunities**, not a measured 80→70°C / 110→150°C, 1 MW H-REF compressor map. The M1.5 hardware acceptance gate remains open. See [M1.6 acquisition and research ethics](docs/methods/M1_6_PUBLIC_EXPERIMENTAL_DATA_ACQUISITION.md).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
