@@ -254,6 +254,10 @@ Open original compressor and Carnot-battery heat-pump/TES measurements are now s
 
 The independent OST Buchs n-butane compressor campaign is now tested with a frozen, **condition-disjoint five-group reserved holdout**. The original M1.4 shaft-efficiency hypothesis is converted to its matching **overall electrical** meter boundary (0.74 × 0.95 × 0.98 = 0.68894), then compared with actual measured `eta_is,electric`; a training-only 2-parameter pressure-ratio ridge fit serves as a separately labelled exploratory comparator. Training-hull membership, observed volumetric efficiency and CoolProp ideal-work sanity are audited. No synthetic manufacturer-polynomial records, pure/mixture mixing, data leakage or target compressor-map extrapolation are permitted. See [M1.7 scientific validation methodology](docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md). H-REF equipment and architecture-viability gates remain blocked.
 
+### M1.8 original UDE R600 measurement independence gate
+
+The [Duisburg-Essen Carnot-battery laboratory dataset](https://doi.org/10.5281/zenodo.18712882) contains **six author-labeled original butane experimental summary conditions** with measured compressor mass flow, absolute P/T and electric inverter-input power. Its three separate Bitzer logs contain **6,839 correlated, sparsely populated device-controller entries**; their `R290` controller setting conflicts with the butane experiment filenames, and they provide no jointly valid compressor P/flow/power snapshots. M1.8 verifies publisher MD5, independently recalculates measured-source overall electric efficiency with CoolProp, reserves entire original experimental summaries for train-only benchmark checks, and tests same-frequency convex-hull support. The **five original M1.7 OST holdouts, hashes and out-of-sample MAE stay unchanged**, with no cross-machine pooling, invented calibration, source-model redistribution or H-REF equipment qualification. See [M1.8 original experiment evidence validation](docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)

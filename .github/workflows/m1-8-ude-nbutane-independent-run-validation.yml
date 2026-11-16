@@ -1,0 +1,107 @@
+name: m1-8-ude-nbutane-independent-run-validation
+on:
+  push:
+    paths:
+      - 'scripts/inspect_ude_r600_run_metadata.py'
+      - 'scripts/inspect_ude_processed_table_fields.py'
+      - 'scripts/run_m1_8_ude_r600_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_processed_means.py'
+      - 'tests/test_m1_8_ude_r600_run_validation.py'
+      - '.github/workflows/m1-8-ude-nbutane-independent-run-validation.yml'
+      - 'docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md'
+  pull_request:
+    paths:
+      - 'scripts/inspect_ude_r600_run_metadata.py'
+      - 'scripts/inspect_ude_processed_table_fields.py'
+      - 'scripts/run_m1_8_ude_r600_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_run_validation.py'
+      - 'src/carnot_battery_lab/physics/ude_r600_processed_means.py'
+      - 'tests/test_m1_8_ude_r600_run_validation.py'
+      - '.github/workflows/m1-8-ude-nbutane-independent-run-validation.yml'
+      - 'docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md'
+  workflow_dispatch:
+
+jobs:
+  ude-original-r600-schema-and-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Original MD5-verified Zenodo n-butane log discovery
+        run: |
+          python scripts/inspect_ude_r600_run_metadata.py \
+            --download --output results/m1_8_ude_nbutane_schema_only.json
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install -e ".[physics,test]"
+      - name: Verify run-grouped controls and immutable OST holdout algorithm
+        run: |
+          python -m pytest tests/test_m1_8_ude_r600_run_validation.py tests/test_m1_7_r600_offdesign_holdout.py -v
+      - name: Independently reproduce OST original holdout and UDE separate original instrument runs
+        run: |
+          python scripts/run_m1_8_ude_r600_validation.py \
+            --download --output results/m1_8_ude_original_nbutane_run_level_validation.json
+      - name: Assert three independent runs and prohibit false predictive-validation promotions
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("results/m1_8_ude_original_nbutane_run_level_validation.json").read_text())
+          o=d["M1_7_OST_FROZEN_V1"]; u=d["UDE_independently_measured_original_bitzeR_runs"]
+          assert o["original_M1_7_reserved_observations"]==5
+          assert abs(o["original_M1_7_fixed_reference_holdout_MAE"]-.06652)<1e-8
+          assert u["source_filename_labeled_nbutane_run_count"]==3
+          assert u["raw_correlated_time_sample_count_not_independent"]==6839
+          p=u["processed_six_r600_original_measured_experiment_summaries"]
+          assert p["candidate_original_pure_nbutane_record_count"]==6
+          assert p["pure_nbutane_measured_EOS_eligible_points"]==6
+          assert u["processed_pure_nbutane_experiment_summaries_count_gate_ge_5"]
+          assert u["processed_pure_nbutane_heldout_same_frequency_hull_coverage_count"]==0
+          assert abs(p["isentropic_efficiency_recomputed_from_shared_source_measurements"]["mean"]-.4445350734379265)<2e-4
+          assert abs(p["reference_M1_7_0_68894_electrical_eta_absolute_error_mean"]-.24440492656207352)<2e-4
+          cv=p["experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation"]
+          assert cv["eligible"] and cv["N"]==6
+          assert cv["same_frequency_in_training_hull_N"]==0
+          assert not cv["in_domain_predictive_accuracy_established"]
+          assert not p["raw_individual_points_exposed"]
+          assert not p["original_1MW_H_REF_hardware_map_qualified"]
+          assert u["logger_setting_compatible_nbutane_run_count"]==0
+          assert u["logged_refrigerant_identity_conflict_detected"]
+          assert all(x["positive_motor_channel_rows"]==0 for x in u["run_sensor_aggregate_only"])
+          assert len(u["leave_one_ENTIRE_run_out_support_checks"])==3
+          assert not u["minimum_independent_run_count_gate_passed"]
+          assert not u["claim_of_real_3D_in_envelope_predictive_accuracy"]
+          assert not u["manufacturer_compressor_map_qualified"]
+          assert not d["M1_5_exact_target_compressor_qualification"]
+          assert not d["cross_machine_training_or_efficiency_metric_pooling"]
+          assert not d["experimental_raw_data_redistributed"]
+          print("M1_8_OST_HOLDOUT_FROZEN_AND_UDE_INDEPENDENT_RUN_BLOCKING_PASS")
+          PY
+      - name: Upload aggregate experimental run results and original OST frozen holdout identifiers only
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-8-source-verified-three-ude-nbutane-runs-OST-holdouts-frozen
+          path: results/m1_8_ude_original_nbutane_run_level_validation.json
+          if-no-files-found: error
+          retention-days: 60
+      - name: Audit multirow processed experiment sensor metadata and Bitzer logger discrepancies
+        run: |
+          python scripts/inspect_ude_processed_table_fields.py \
+            --download --output results/m1_8_ude_processed_table_field_metadata.json
+      - name: Preserve only table headers and numeric channel counts, not sensor histories
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-8-ude-processed-column-headings-and-device-diagnostics
+          path: results/m1_8_ude_processed_table_field_metadata.json
+          if-no-files-found: error
+          retention-days: 45
+      - name: Upload metadata only not original source data
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-8-original-nbutane-logs-SCHEMA-NOT-validated-map
+          path: results/m1_8_ude_nbutane_schema_only.json
+          if-no-files-found: error
+          retention-days: 30
