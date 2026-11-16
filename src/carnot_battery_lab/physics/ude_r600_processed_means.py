@@ -38,6 +38,107 @@ def _mean_and_range(v:list[float])->dict:
     return {"N":len(v),"mean":mean(v),"min":min(v),"max":max(v)}
 
 
+def _in_same_frequency_train_hull(held:dict,training:list[dict])->bool:
+    """No speed interpolation: require exact original electrical frequency.
+
+    This is an INPUT interpolation check, not validation of response accuracy.
+    """
+    from scipy.optimize import linprog
+    group=[x for x in training
+           if abs(x["reported_compressor_electric_frequency_Hz"]-
+                  held["reported_compressor_electric_frequency_Hz"])<1e-9]
+    if len(group)<2:
+        return False
+    def coord(x):
+        return (x["p_suc_Pa"],x["T_suction_K"],
+                math.log(x["p_dis_Pa"]/x["p_suc_Pa"]))
+    coords=[coord(p) for p in group]
+    q=coord(held)
+    eq=[[1.]*len(group)]
+    target=[1.]
+    for dim in range(3):
+        components=[p[dim] for p in coords]
+        lo,hi=min(components),max(components)
+        if abs(hi-lo)<1e-10*max(1.,abs(lo),abs(hi)):
+            if abs(q[dim]-lo)>1e-8*max(1.,abs(lo)):
+                return False
+            continue
+        scaled=(q[dim]-lo)/(hi-lo)
+        if not -1e-9<=scaled<=1+1e-9:
+            return False
+        eq.append([(v-lo)/(hi-lo) for v in components])
+        target.append(scaled)
+    s=linprog([0.]*len(group),A_eq=eq,b_eq=target,
+              bounds=(0,None),method="highs")
+    return bool(s.success and min(s.x)>=-1e-8)
+
+
+def _loocv_training_only_predictions(points:list[dict])->dict:
+    """Experimental ROW-group withholding, same rig/campaign not new lab.
+
+    No source efficiencies are used to choose a heldout row or fit on that row.
+    Reuse pre-declared M1.7 ridge log-pressure-ratio regularization (=0.20).
+    """
+    from carnot_battery_lab.physics.r600_offdesign_holdout import (
+        RIDGE_LOG_PRESSURE_RATIO_PENALTY,
+    )
+    n=len(points)
+    if n<5:
+        return {"eligible":False,"N":n,
+                "reason":"fewer than 5 distinct measured experiment-summary rows",
+                "same_frequency_in_training_hull_N":0}
+    errors={"fixed_original_M1_7_constant":[],"train_only_electric_eta_mean":[],
+            "train_only_two_parameter_log_pressure_ridge":[]}
+    within=[]
+    for i,held in enumerate(points):
+        train=[x for j,x in enumerate(points) if j!=i]
+        outputs=[x["eta_is_overall_electric_recomputed"] for x in train]
+        inputs=[math.log(x["p_dis_Pa"]/x["p_suc_Pa"]) for x in train]
+        xmean,ymean=mean(inputs),mean(outputs)
+        b=sum((x-xmean)*(y-ymean) for x,y in zip(inputs,outputs))/(
+            sum((x-xmean)**2 for x in inputs)+RIDGE_LOG_PRESSURE_RATIO_PENALTY)
+        pred=ymean+b*(math.log(held["p_dis_Pa"]/held["p_suc_Pa"])-xmean)
+        predictions={
+            "fixed_original_M1_7_constant":
+                REFERENCE_OVERALL_ELECTRIC_EFFICIENCY,
+            "train_only_electric_eta_mean":ymean,
+            "train_only_two_parameter_log_pressure_ridge":pred,
+        }
+        # Do not clip an invalid efficiency prediction to create good scores.
+        if any(not math.isfinite(x) or not 0<x<=1 for x in predictions.values()):
+            return {"eligible":False,"N":n,
+                    "reason":"physically inadmissible leave-one-experiment prediction",
+                    "same_frequency_in_training_hull_N":0}
+        truth=held["eta_is_overall_electric_recomputed"]
+        for key,val in predictions.items():
+            errors[key].append(val-truth)
+        within.append(_in_same_frequency_train_hull(held,train))
+    def metrics(e):
+        return {"N":len(e),"MAE":mean(abs(x) for x in e),
+                "RMSE":math.sqrt(mean(x*x for x in e)),
+                "bias":mean(e)}
+    inside=[i for i,v in enumerate(within) if v]
+    return {
+        "eligible":True,"N":n,
+        "test_unit":"one original experiment-summary row not correlated logger sample",
+        "same_source_experimental_campaign_no_independent_lab":True,
+        "source_derived_electric_eta_recomputed_not_a_direct_efficiency_sensor":True,
+        "training_only_regularization_predeclared":
+            RIDGE_LOG_PRESSURE_RATIO_PENALTY,
+        "whole_experiment_LOO_metrics":{k:metrics(e) for k,e in errors.items()},
+        "same_frequency_in_training_hull_N":len(inside),
+        "outside_same_frequency_training_hull_N":n-len(inside),
+        "interior_holdout_errors":(
+            {k:metrics([errs[i] for i in inside]) for k,errs in errors.items()}
+            if inside else None),
+        "multi_speed_interpolation_used":False,
+        "minimum_3_in_domain_heldout_experiments_for_strong_claim_met":
+            len(inside)>=3,
+        "in_domain_predictive_accuracy_established":False,
+        "uncertainty_calibrations_reviewed":False,
+    }
+
+
 def audit_processed_experiment_summaries(raw:bytes)->dict:
     """Strict source multiprovenance, no original measured values in response."""
     rows=list(csv.reader(io.StringIO(raw.decode("utf-8-sig",errors="replace")),
@@ -133,6 +234,8 @@ def audit_processed_experiment_summaries(raw:bytes)->dict:
         "ELECTRIC_METER":"source-described compressor frequency inverter input W",
         "sensor_rather_than_derived_fields_used_for_EOS":(
             "m_dot_wf","p-R02","p-R03","T-R02","P_comp_el"),
+        "experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation":
+            _loocv_training_only_predictions(valid),
         "isentropic_efficiency_recomputed_from_shared_source_measurements":
             _mean_and_range([r["eta_is_overall_electric_recomputed"] for r in valid]),
         "reference_M1_7_0_68894_electrical_eta_absolute_error_mean":
