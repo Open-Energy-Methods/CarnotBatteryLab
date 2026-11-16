@@ -254,6 +254,10 @@ Open original compressor and Carnot-battery heat-pump/TES measurements are now s
 
 The independent OST Buchs n-butane compressor campaign is now tested with a frozen, **condition-disjoint five-group reserved holdout**. The original M1.4 shaft-efficiency hypothesis is converted to its matching **overall electrical** meter boundary (0.74 × 0.95 × 0.98 = 0.68894), then compared with actual measured `eta_is,electric`; a training-only 2-parameter pressure-ratio ridge fit serves as a separately labelled exploratory comparator. Training-hull membership, observed volumetric efficiency and CoolProp ideal-work sanity are audited. No synthetic manufacturer-polynomial records, pure/mixture mixing, data leakage or target compressor-map extrapolation are permitted. See [M1.7 scientific validation methodology](docs/methods/M1_7_R600_RESERVED_OFFDESIGN_VALIDATION.md). H-REF equipment and architecture-viability gates remain blocked.
 
+### M1.8 original UDE R600 measurement independence gate
+
+The [Duisburg-Essen Carnot-battery lab data](https://doi.org/10.5281/zenodo.18712882) provide three original n-butane compressor instrument-log experiments (026–028) with **6,839 serially correlated time records**. M1.8 verifies source MD5, sensor field names, run boundaries, pressure plausibility, logger-channel completeness and whole-run-out support; it refuses to treat timeseries rows as independent experiments or uncalibrated motor/speed channels as SI shaft power/shaft RPM. The **five M1.7 OST reserved observations and original out-of-sample MAE remain unchanged** and are not pooled with another compressor rig. Three runs cannot establish robust independent in-envelope accuracy; hardware and original target H-REF qualification remain blocked. See [M1.8 original-run validation protocol](docs/methods/M1_8_UDE_INDEPENDENT_R600_RUN_VALIDATION.md).
+
 ## Development and evidence
 
 - [Master scientific research plan](docs/MASTER_RESEARCH_PLAN.md)
