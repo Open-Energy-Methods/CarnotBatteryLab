@@ -34,6 +34,22 @@ This is an assumed zero-instrument-bias, one-way response model, not an independ
 - **Output:** deterministic min/max of scenario trajectories at each sensor/time; because the extremising scenario may differ by sensor and time, this is **NOT a jointly realizable calibration envelope**, likelihood region or measurement uncertainty interval. It is only an exploratory sensitivity bound.
 - **Independence and limitations:** no Case A/C/D model selection; no experimental manufacturer sensor response, probe-radial positions, confirmed calibration, fully qualified flow or horizontal 2-D buoyancy. The 128-cell in-bed observation-operator spatial convergence has not yet been demonstrated.
 
+## Initial source-locked results (2024 original Case B)
+
+GitHub Actions run 43839962679 successfully executed the 128-cell forward phase-field model and the **27 deterministic, jointly configured** sensor hypotheses. The published initial seven original TC values were used only to initialise the field; subsequent 300 samples were diagnostic comparisons. The output reports:
+
+| Source TC | Measured samples outside wide scenario range | Maximum outside-range distance |
+|---|---:|---:|
+| T1 | 52.00% | 12.67°C |
+| T2 | 44.00% | 20.33°C |
+| T3 | 47.33% | 56.04°C |
+| T4 | 45.67% | 61.82°C |
+| T5 | 47.67% | 72.23°C |
+| T6 | 47.33% | 72.26°C |
+| T7 | 52.00% | 90.71°C |
+
+This sensor-response hypothesis envelope is typically wider than the prior instantaneous phase/location extrema, but cannot be interpreted as improved physical calibration. In particular, **over half of T7 samples remain outside** even the chosen broad response/contact scenarios. No likelihood weights, sensor time constants, positions or contacts were estimated from these residuals. The source-informed experimental error is still substantial, and no 128→512 internal-field convergence was yet demonstrated.
+
 ## Reproduce
 
 `python -m pytest tests/test_m2_dynamic_thermocouples.py -v`
