@@ -1,0 +1,30 @@
+name: m2-synthetic-identifiability
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/validation/m2_synthetic_identifiability.py'
+      - 'scripts/run_m2_synthetic_identifiability.py'
+      - 'tests/test_m2_synthetic_identifiability.py'
+      - '.github/workflows/m2-synthetic-identifiability.yml'
+  workflow_dispatch:
+jobs:
+  synthetic-model-identifiability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install physics and test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Verify independent structural aliases and synthetic first-law closure
+        run: python -m pytest tests/test_m2_synthetic_identifiability.py -v
+      - name: Run deterministic seven-parameter sensitivity and SVD audit
+        run: python scripts/run_m2_synthetic_identifiability.py --cells 10 --steps 18 --output results/m2_synthetic_parameter_identifiability.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m2-synthetic-model-only-identifiability
+          path: results/m2_synthetic_parameter_identifiability.json
+          if-no-files-found: error
+          retention-days: 21
