@@ -4,6 +4,10 @@ on:
     paths:
       - 'scripts/study_horizontal_bed_fine_mesh_512.py'
       - 'scripts/study_case_B_no_target_leak_512.py'
+      - 'scripts/run_case_B_no_target_leak.py'
+      - 'src/carnot_battery_lab/validation/internal_field_convergence.py'
+      - 'tests/test_m2_internal_field_convergence.py'
+      - 'tests/test_m2_analytic_two_temperature_exchange.py'
       - 'scripts/report_m2_physical_validation_readiness.py'
       - 'tests/test_m2_physical_validation_readiness.py'
       - 'scripts/plot_case_B_fine_mesh_evidence.py'
@@ -26,7 +30,7 @@ jobs:
       - name: Install reproducible numerical dependencies
         run: python -m pip install -e ".[physics,test]"
       - name: Independently verify analytically solvable heat exchange and validation gates
-        run: python -m pytest tests/test_m2_fine_mesh_analytic.py tests/test_m2_physical_validation_readiness.py -v
+        run: python -m pytest tests/test_m2_fine_mesh_analytic.py tests/test_m2_physical_validation_readiness.py tests/test_m2_analytic_two_temperature_exchange.py tests/test_m2_internal_field_convergence.py -v
       - name: Download original 2024 experimental runs and verify Case B SHA-256
         run: python scripts/acquire_horizontal_bed_2024.py --output-dir results/external_horizontal_bed
       - name: Source-locked Case B spatial refinement on 64/128/256/512 cells
