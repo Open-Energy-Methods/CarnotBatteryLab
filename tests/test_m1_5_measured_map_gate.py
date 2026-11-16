@@ -114,7 +114,7 @@ def test_declared_rated_limits_and_point_uncertainty_must_be_valid():
     m=synth_map()
     with pytest.raises(ValueError,match="limits"):
         RatedMapLimits(**{**asdict(m.rated_limits),"maximum_speed_rpm":100.})
-    with pytest.raises(ValueError,match="point"):
+    with pytest.raises(ValueError,match="measured field"):
         replace(m.points[0],flow_relative_standard_uncertainty=-1.)
     with pytest.raises(ValueError,match="stability"):
         replace(m.points[0],stability_confirmed=False)
