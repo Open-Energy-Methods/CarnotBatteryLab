@@ -317,6 +317,70 @@ def validate_holdouts(m:CompressorMap, thresholds:MapThresholds)->dict:
             "not_independent_evidence_of_source_authenticity":True}
 
 
+def check_submitted_measured_point_thermodynamics(m:CompressorMap)->dict:
+    """Independent EOS mass-volume and ideal enthalpy sanity check.
+
+    Only for declared measured pure-fluid, no-injection stage topologies.
+    Synthetic fixtures are NOT physical truth; mixtures and unknown fluids
+    require an explicitly validated property backend before admission.
+    This check is NOT source authentication, nor a compressor performance
+    validation in its own right.
+    """
+    if m.evidence.evidence_class=="SYNTHETIC_TEST_FIXTURE":
+        return {"passed":True,"status":"SYNTHETIC_NO_EOS_VERIFICATION",
+                "model_only":True}
+    fluids={"R718 water":"HEOS::Water","R600 n-butane":"HEOS::n-Butane"}
+    fluid=fluids.get(m.evidence.refrigerant)
+    if fluid is None:
+        return {"passed":False,"status":"UNSUPPORTED_MEASURED_REFRIGERANT_EOS"}
+    try:
+        from CoolProp.CoolProp import PropsSI
+    except ImportError:
+        return {"passed":False,"status":"COOLPROP_REQUIRED_TO_AUDIT_MEASURED_MAP"}
+    errors=[]
+    for obs in m.points:
+        try:
+            pin=obs.suction_pressure_Pa
+            pout=pin*obs.stage_pressure_ratio
+            tin=obs.suction_temperature_C+273.15
+            rho=float(PropsSI("Dmass","P",pin,"T",tin,fluid))
+            h1=float(PropsSI("H","P",pin,"T",tin,fluid))
+            s1=float(PropsSI("S","P",pin,"T",tin,fluid))
+            hs=float(PropsSI("H","P",pout,"S",s1,fluid))
+            if not all(isfinite(x) for x in (rho,h1,s1,hs)):
+                raise ValueError("nonfinite property")
+            q=obs.refrigerant_mass_flow_kg_s
+            mass_rel=abs(rho*obs.suction_volumetric_flow_m3_s-q)/q
+            ideal_shaft=q*(hs-h1)
+            eta_shaft=ideal_shaft/obs.shaft_power_W
+            prediction_h=h1+(hs-h1)/obs.isentropic_efficiency
+            t_out=float(PropsSI("T","P",pout,"H",prediction_h,fluid))-273.15
+            checks=(
+                mass_rel<=max(.02,3.*obs.flow_relative_standard_uncertainty),
+                ideal_shaft>0 and 0<eta_shaft<=1.02,
+                abs(eta_shaft-obs.isentropic_efficiency)<=max(
+                    .03,3.*obs.shaft_relative_standard_uncertainty),
+                abs(t_out-obs.discharge_temperature_C)<=max(
+                    5.,3.*obs.discharge_temperature_standard_uncertainty_K),
+            )
+            if not all(checks):
+                errors.append({"point_id":obs.point_id,
+                               "mass_volume_relative_mismatch":mass_rel,
+                               "eta_from_stage_shaft":eta_shaft,
+                               "discharge_model_difference_K":
+                                   t_out-obs.discharge_temperature_C,
+                               "check_results":list(checks)})
+        except (ValueError,OverflowError) as exc:
+            errors.append({"point_id":obs.point_id,"property_error":str(exc)[:120]})
+    return {
+        "passed":not errors,
+        "status":"EOS_STATE_AND_ENERGY_SANITY_PASS_NOT_HARDWARE_VALIDATION"
+            if not errors else "MEASURED_MAP_EOS_CONSISTENCY_FAILURE",
+        "details":errors,
+        "EOS_property_level_check_not_independent_measured_validation":True,
+    }
+
+
 def _rated_guard(demand:CompressorStageDemand, rated:RatedMapLimits,
                  speed:float)->str|None:
     if not rated.minimum_speed_rpm<=speed<=rated.maximum_speed_rpm:
@@ -349,6 +413,12 @@ def screen_stage_demand(
                 "supported_speed_rpm":None}
     # read_map_package disallows ambiguous train/stage pairs.
     m=candidates[0]
+    eos=check_submitted_measured_point_thermodynamics(m)
+    if not eos["passed"]:
+        return {"status":"MEASURED_MAP_PROPERTY_AND_ENERGY_AUDIT_FAILED",
+                "local_map_support":False,"hardware_qualified":False,
+                "measured_point_thermodynamic_audit":eos,
+                "supported_speed_rpm":None}
     holdouts=validate_holdouts(m,thresholds)
     if not holdouts["passed"]:
         return {"status":"INDEPENDENT_HOLDOUT_VALIDATION_FAILED",
@@ -356,6 +426,12 @@ def screen_stage_demand(
                 "holdout_validation":holdouts,"supported_speed_rpm":None}
     statuses=[]
     for speed in sorted(set(p.speed_rpm for p in m.points if p.role=="fit")):
+        count_holdouts=sum(x.role=="holdout" and x.speed_rpm==speed
+                           for x in m.points)
+        if count_holdouts<2:
+            statuses.append({"speed_rpm":speed,
+                             "status":"INSUFFICIENT_HOLDOUTS_ON_THIS_SPEED_LINE"})
+            continue
         guard=_rated_guard(demand,m.rated_limits,speed)
         if guard:
             statuses.append({"speed_rpm":speed,"status":guard})
@@ -413,6 +489,7 @@ def screen_stage_demand(
         "source_document_digest_verified_against_external_original":False,
         "hardware_qualified":False,
         "holdout_validation":holdouts,
+        "measured_point_thermodynamic_audit":eos,
         "speed_line_trials":statuses,
         "equipment_id":m.evidence.machine_id,
     }
