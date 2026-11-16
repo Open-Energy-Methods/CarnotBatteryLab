@@ -81,10 +81,15 @@ def read_original_bitzer_run(source:bytes,*,filename:str,run_id:str)->RunSummary
         # Bitzer exports preserve leading/trailing spaces in some headers.
         fields=[f.strip() for f in fields]
         reader.fieldnames=fields
-    if fields is None or len(fields)!=len(set(fields)) or not set(
-        MANDATORY_CHANNELS).issubset(fields):
-        missing=sorted(set(MANDATORY_CHANNELS)-set(fields or []))
-        raise ValueError(f"required original Bitzer sensor channels unavailable: {missing}")
+    # Bitzer exports may repeat unrelated auxiliary/alarm header names. Only
+    # the selected real sensor names must be individually unique, to avoid
+    # accidentally reading a duplicate ambiguous measurement.
+    if fields is None or any(fields.count(k)!=1 for k in
+                             MANDATORY_CHANNELS+("Time",)):
+        missing=sorted(k for k in MANDATORY_CHANNELS+("Time",)
+                       if (fields or []).count(k)!=1)
+        raise ValueError(
+            f"required original Bitzer sensor channels unavailable or ambiguous: {missing}")
     if not any("Time"==col for col in fields):
         raise ValueError("no original logger time channel")
     observations=0;pressure_good=0;motor_good=0;motor_parse=0;complete=0
