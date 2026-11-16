@@ -346,3 +346,31 @@ def test_interpolated_measured_outputs_must_agree_with_cycle_work():
     assert result["local_map_support"] is False
     assert result["speed_line_trials"][0]["status"]==(
         "MAP_PREDICTION_DIFFERS_FROM_CYCLE_HYPOTHESIS")
+
+
+def test_inflated_uncertainty_is_not_a_way_to_pass_bad_measured_map():
+    pytest.importorskip("scipy")
+    good=synth_map()
+    broad=CompressorMap(good.evidence,good.rated_limits,tuple(
+        replace(x,flow_relative_standard_uncertainty=.20)
+        for x in good.points))
+    h=validate_holdouts(broad,MapThresholds())
+    assert h["passed"] is False
+    assert h["status"]=="DECLARED_MEASUREMENT_UNCERTAINTY_TOO_LARGE"
+    assert not screen_stage_demand(
+        demand(),(broad,),train_id=TRAIN,topology_id=TOPO)["local_map_support"]
+
+
+def test_small_holdout_bias_fails_if_more_than_three_standard_uncertainties():
+    pytest.importorskip("scipy")
+    m=synth_map()
+    changed=tuple(
+        replace(x,shaft_power_W=x.shaft_power_W+3000.)
+        if x.point_id=="holdout1" else x
+        for x in m.points)
+    biased=CompressorMap(m.evidence,m.rated_limits,changed)
+    # 3% is less than the 5% absolute model screen, but greater than
+    # 3x the reported 0.5% measurement standard uncertainty.
+    h=validate_holdouts(biased,MapThresholds())
+    assert h["passed"] is False
+    assert any(x["status"]=="HOLDOUT_PREDICTION_FAILED" for x in h["details"])
