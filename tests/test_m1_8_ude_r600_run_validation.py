@@ -156,3 +156,48 @@ def test_inconsistent_csv_row_width_fails_source_contract():
     raw=_sample()+b"extra;unexpected;column\n"
     with pytest.raises(ValueError,match="column count"):
         read_original_bitzer_run(raw,filename=NAMES[0],run_id="026")
+
+def test_predeclared_six_experiment_holdout_uses_electrical_meter_not_source_fit():
+    from carnot_battery_lab.physics.ude_r600_processed_means import (
+        audit_processed_experiment_summaries,
+    )
+    report=audit_processed_experiment_summaries(
+        _processed_six_source_fixtures())
+    cv=report["experimental_source_means_leave_ONE_EXPERIMENT_OUT_validation"]
+    assert cv["eligible"] is True
+    assert cv["N"]==6
+    assert cv["whole_experiment_LOO_metrics"][
+        "fixed_original_M1_7_constant"]["N"]==6
+    assert cv["whole_experiment_LOO_metrics"][
+        "train_only_two_parameter_log_pressure_ridge"]["N"]==6
+    assert cv["same_frequency_in_training_hull_N"]+cv[
+        "outside_same_frequency_training_hull_N"]==6
+    assert cv["multi_speed_interpolation_used"] is False
+    assert cv["in_domain_predictive_accuracy_established"] is False
+    assert report["source_derived_global_eta_not_independently_measured"]["N"]==6
+
+
+def test_m1_7_original_holdout_hashes_are_hard_frozen():
+    from pathlib import Path
+    from scripts.run_m1_8_ude_r600_validation import (
+        FROZEN_OST_M1_7_RESERVED_CONDITION_IDS,
+    )
+    assert FROZEN_OST_M1_7_RESERVED_CONDITION_IDS==(
+        "4f0a2b700ee73221",
+        "5dc9eee2bf90a3e0",
+        "7aac3574d2cbc688",
+        "7c72ebc272835679",
+        "86060d047e5b07fa",
+    )
+
+
+def test_meter_units_and_measured_column_contract_fail_closed():
+    from carnot_battery_lab.physics.ude_r600_processed_means import (
+        audit_processed_experiment_summaries,
+    )
+    raw=_processed_six_source_fixtures()
+    altered=raw.replace(b"P_comp_el",b"P_unknown")
+    with pytest.raises(ValueError,match="field header changed"):
+        audit_processed_experiment_summaries(altered)
+
+
