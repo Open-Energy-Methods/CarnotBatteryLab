@@ -16,6 +16,15 @@ from carnot_battery_lab.physics.ude_r600_run_validation import (
 )
 OST_URL="https://zenodo.org/records/17599603/files/compressor_performance_data.csv?download=1"
 UDE_URL="https://zenodo.org/records/18712882/files/data.zip?download=1"
+# Recovered from original unchanged M1.7 source checksum + split algorithm.
+# Must never be reselected based on any UDE results.
+FROZEN_OST_M1_7_RESERVED_CONDITION_IDS=(
+    "4f0a2b700ee73221",
+    "5dc9eee2bf90a3e0",
+    "7aac3574d2cbc688",
+    "7c72ebc272835679",
+    "86060d047e5b07fa",
+)
 
 def _get(url:str,limit:int)->bytes:
     with urllib.request.urlopen(urllib.request.Request(
@@ -31,6 +40,9 @@ def evaluate(ost_raw:bytes,ude_raw:bytes)->dict:
     old=parse_ost_pure_butane(ost_raw,expected_md5=OST_MD5)
     if len(old)!=20:raise ValueError("original OST measured-point count changed")
     train,holdout,meta=reserve_operating_condition_groups(old)
+    if tuple(meta["reserved_opaque_condition_hashes"])!=(
+            FROZEN_OST_M1_7_RESERVED_CONDITION_IDS):
+        raise ValueError("M1.7 original 5 reserved operating conditions changed")
     old_validation=validate_reserved_offdesign(train,holdout,split=meta)
     source_result=old_validation["metrics"][
         "electric_isentropic_efficiency"]["fixed_M1_4_reference"]
