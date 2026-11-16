@@ -6,9 +6,11 @@ and differential-pressure channel. The README does NOT specify pressure
 units, so this analysis NEVER treats the channel as Pa without independent
 instrumentation metadata.
 
-Use case A only as pre-registered OUT-OF-SAMPLE physical benchmark, in line
-with the 2025 companion paper's held-out experiment. No model parameters
-are calibrated to A. This produces observed thresholds, not predictions.
+Measured-only source statistics are calculated for every case.
+Case A was ALREADY examined with a numerical model in earlier repository
+development, so it is NOT an untouched blind test here. Case B is the
+current physics-development run; C/D have descriptive observations
+but have not been used to choose the numerical model.
 """
 from __future__ import annotations
 import argparse
@@ -117,8 +119,10 @@ def main():
         "original_data_class":"MEASURED",
         "data_license":"CC BY 4.0",
         "source_readme":"30-second sampling, temperatures C, velocity m/s, source differential-pressure units unstated",
-        "holdout_case":"A",
-        "candidate_training_cases":["B","C","D"],
+        "case_A_already_compared_to_model_not_blind":True,
+        "numerical_model_development_case":"B",
+        "cases_C_D_measured_statistics_known_but_not_model_fitted":["C","D"],
+        "physical_validation_claim":False,
         "comparisons":{cid:summarize_case(c) for cid,c in cases.items()},
         "physical_validation_status":"NOT_RUN",
         "blockers":[
