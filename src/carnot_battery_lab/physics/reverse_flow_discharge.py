@@ -219,7 +219,7 @@ def simulate_charge_discharge_cycle(
         })
     final_energy=float(bed_energy_J(bed,state))
     cycle_residual=float(final_energy-start_energy-charge_input_J+heat_to_gas_J+
-                    charge_loss_J+discharge_loss_J))
+                    charge_loss_J+discharge_loss_J)
     if abs(cycle_residual)>1e-5*max(1.,abs(charge_input_J),abs(heat_to_gas_J)):
         raise RuntimeError("cycle-integrated first law failed")
     return {
