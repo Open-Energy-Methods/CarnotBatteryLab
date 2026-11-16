@@ -129,7 +129,7 @@ OUTREACH=(
               "alternative machinery rated for subatmospheric steam.",
     },
     {
-        "id":"OST_BRANDEL_439","contacts":["leon.brendel@ost.ch"],
+        "id":"OST_BRENDEL_439","contacts":["leon.brendel@ost.ch"],
         "contact_source":"https://doi.org/10.1016/j.ijrefrig.2025.11.012",
         "ask":"Clarify original 439-observation Excel supplementary availability and "
               "confirm Table 1 has no pure R600; ask about separately tested "
