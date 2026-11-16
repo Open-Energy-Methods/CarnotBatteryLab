@@ -11,9 +11,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict, replace
 from math import isfinite
+from typing import TYPE_CHECKING
 
 from .r718 import R718Inputs, R718Result, solve_r718
-from .r600_transcritical_screen import R600ScreenInputs, R600ScreenResult
+
+# The foundation test matrix intentionally omits optional CoolProp. R600
+# solver imports CoolProp at module load, so keep its type-only dependency
+# behind TYPE_CHECKING and import the solver only in real-fluid test paths.
+if TYPE_CHECKING:
+    from .r600_transcritical_screen import R600ScreenResult
 
 
 @dataclass(frozen=True)
