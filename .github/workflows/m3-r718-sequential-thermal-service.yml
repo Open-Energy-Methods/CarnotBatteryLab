@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'src/carnot_battery_lab/physics/sequential_hp_tes_service.py'
+      - 'src/carnot_battery_lab/physics/reverse_flow_discharge.py'
       - 'scripts/run_m3_r718_sequential_service.py'
       - 'tests/test_m3_r718_sequential_service.py'
       - '.github/workflows/m3-r718-sequential-thermal-service.yml'
