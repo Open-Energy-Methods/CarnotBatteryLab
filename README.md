@@ -203,11 +203,11 @@ An independent **one-way thermocouple observation module** now applies one commo
 
 [Read M2.1 methods and the seven-probe measured diagnostics](docs/methods/M2_DYNAMIC_TC_OBSERVATION.md). Physical validation remains source-limited and M2 open.
 
-## M2.2 internal gas/solid numerical convergence verified on fixed coordinates
+## M2.3 variable-enthalpy and steel-shell-inertia alternative
 
-The target-independent Case B fine-mesh workflow now records both gas and rock model histories at **seven fixed, assumed physical positions (0.05–0.35 m)** on 32/64/128/256/512-cell meshes. At 256→512 cells the worst full-history RMS increment is **0.572 K for gas** and **0.553 K for rock**, meeting the provisional 1 K *numerical* screen for these inputs. A separate exact, closed-form two-temperature/no-flow exchange benchmark verifies phase temperatures and total energy independently of the BDF integrator.
+A separately implemented, **conservative** thermophysical solver now computes ideal dry-air N₂/O₂ NIST Shomate sensible enthalpy and cp(T), uses a declared hypothetical temperature-dependent slag cp(T), and models a finite **7-mm nominal steel-shell thermal capacity** and two serial rock→wall→ambient heat-transfer interfaces. The original constant-cp source-locked solver is **unchanged**.
 
-[Read M2.2 source-locked in-bed numerical verification](docs/methods/M2_INTERNAL_TWO_PHASE_CONVERGENCE.md). **This is not laboratory TC validation:** the actual sensor coordinates and response, source gas flow and slag properties remain unresolved.
+The independent synthetic four-step energy audit passed with ~**1.155 MJ** gas heat input and **0.0068 J** cumulative first-law residual. Tests verify `dh_air/dT = cp_air`, NIST segment continuity, gas/rock/wall conservation and physical guards. The actual 2024 slag batch material properties, wall UAs, gas pressure and measured flow are **not calibrated**; synthetic verification is **not external validation**. [Read M2.3 method and limitations](docs/methods/M2_VARIABLE_ENTHALPY_WALL_METHOD.md).
 
 ## Development and evidence
 
