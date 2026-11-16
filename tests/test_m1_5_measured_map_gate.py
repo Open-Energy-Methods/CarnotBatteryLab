@@ -288,3 +288,61 @@ def test_cannot_blend_between_two_rpm_lines_to_create_fictitious_speed_support()
     assert result["local_map_support"] is False
     assert all(row["status"]=="OUTSIDE_FIXED_SPEED_MEASURED_CONVEX_HULL"
                for row in result["speed_line_trials"])
+
+
+def test_measured_map_eos_sanity_rejects_thermophysically_fake_map():
+    pytest.importorskip("scipy")
+    pytest.importorskip("CoolProp")
+    # Even seemingly complete declarations cannot make a made-up 1kg/m3,
+    # 1kg/s R718 suction state a verified compressor performance map.
+    fake=synth_map()
+    evidence=replace(
+        fake.evidence,evidence_class="MEASURED_REVIEW_ASSERTED",
+        source_document_url="https://example.org/nonexistent-synthetic-map",
+        source_document_sha256="a"*64,
+        calibration_traceability_reference="SYNTHETIC-CAL",
+        heldout_test_campaign_id="SYNTHETIC-RESERVED",
+        independent_review_reference="https://example.org/nonexistent-review",
+    )
+    disguised=CompressorMap(evidence,fake.rated_limits,fake.points)
+    result=screen_stage_demand(
+        demand(),(disguised,),train_id=TRAIN,topology_id=TOPO)
+    assert result["status"]=="MEASURED_MAP_PROPERTY_AND_ENERGY_AUDIT_FAILED"
+    assert result["measured_point_thermodynamic_audit"]["passed"] is False
+    assert result["local_map_support"] is False
+    assert result["hardware_qualified"] is False
+
+
+def test_each_accepted_speed_line_needs_its_own_two_holdouts():
+    pytest.importorskip("scipy")
+    example=synth_map()
+    shifted_fit=tuple(replace(p,point_id="low-"+p.point_id,
+        suction_pressure_Pa=p.suction_pressure_Pa-8000.)
+        for p in example.points if p.role=="fit")
+    shifted_holdout=tuple(replace(p,point_id="low-"+p.point_id,
+        suction_pressure_Pa=p.suction_pressure_Pa-8000.)
+        for p in example.points if p.role=="holdout")
+    # 10000 rpm line has valid holdouts but no target coverage.
+    # 10500 rpm line has target coverage but no holdouts at that speed.
+    untested_fit=tuple(replace(p,point_id="untested-"+p.point_id,
+        speed_rpm=10500.) for p in example.points if p.role=="fit")
+    map_without_speed_holdouts=CompressorMap(
+        example.evidence,example.rated_limits,
+        shifted_fit+shifted_holdout+untested_fit)
+    result=screen_stage_demand(
+        demand(),(map_without_speed_holdouts,),
+        train_id=TRAIN,topology_id=TOPO)
+    assert result["local_map_support"] is False
+    states={row["speed_rpm"]:row["status"] for row in result["speed_line_trials"]}
+    assert states[10000.]=="OUTSIDE_FIXED_SPEED_MEASURED_CONVEX_HULL"
+    assert states[10500.]=="INSUFFICIENT_HOLDOUTS_ON_THIS_SPEED_LINE"
+
+
+def test_interpolated_measured_outputs_must_agree_with_cycle_work():
+    pytest.importorskip("scipy")
+    altered=replace(demand(),shaft_power_W_idealized=109000.)
+    result=screen_stage_demand(
+        altered,(synth_map(),),train_id=TRAIN,topology_id=TOPO)
+    assert result["local_map_support"] is False
+    assert result["speed_line_trials"][0]["status"]==(
+        "MAP_PREDICTION_DIFFERS_FROM_CYCLE_HYPOTHESIS")
