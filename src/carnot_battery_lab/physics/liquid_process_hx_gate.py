@@ -117,6 +117,8 @@ def screen_gas_to_liquid_hx_at_sample(*,
         raise HXDomainError("invalid hot gas source temperature")
     hot_gas_out_C=(hot_gas_in_C-contract.thermal_duty_W/
                    (hot_gas_mass_flow_kg_s*hot_gas_cp_J_kgK))
+    if hot_gas_out_C<=-273.15:
+        raise HXDomainError("gas outlet extrapolates below absolute zero")
     dT_hot_end_K=hot_gas_in_C-contract.liquid_supply_C
     dT_cold_end_K=hot_gas_out_C-contract.liquid_return_C
     lowest=min(dT_hot_end_K,dT_cold_end_K)
@@ -128,7 +130,7 @@ def screen_gas_to_liquid_hx_at_sample(*,
         contract.thermal_duty_W/(
           hot_gas_cp_J_kgK*(hot_gas_in_C-contract.liquid_return_C-
                             contract.minimum_internal_approach_K))
-        if hot_gas_in_C>contract.liquid_return_C+
+        if hot_gas_in_C>contract.liquid_supply_C+
            contract.minimum_internal_approach_K else None)
     ua_req=None
     if grade:
@@ -167,7 +169,8 @@ def screen_gas_to_liquid_hx_at_sample(*,
             contract.installed_UA_is_measured,
         "saturated_water_pressure_at_process_supply_Pa":sat_p,
         "actual_process_loop_pressure_Pa":contract.liquid_absolute_pressure_Pa,
-        "actual_water_liquid_phase_at_process_supply_confirmed":bool(p_is_liquid),
+        "water_liquid_phase_possible_at_ASSUMED_pressure":bool(p_is_liquid),
+        "actual_process_water_pressure_verified_from_measurements":False,
         "wall_heat_capacity_and_transient_HX_dynamics_included":False,
         "source_gas_heat_capacity_temperature_resolved":False,
         "real_HX_and_cooling_loop_test_data_validated":False,
