@@ -137,7 +137,7 @@ def test_positive_necessary_screen_from_artificially_preheated_small_bed():
     assert r["screened_full_duty_prefix_duration_s"]==30.
     assert r["status"]=="MODEL_ONLY_FULL_DURATION_GAS_TO_LIQUID_NECESSARY_GATE"
     assert r["discharge"]["maximum_required_counterflow_UA_W_K_across_eligible_steps"]>0.
-    assert r["discharge"]["max_sampled_required_extra_gas_cooler_W_if_1MW"]>0.
+    assert r["discharge"]["max_interval_mean_additional_gas_cooler_thermal_W_if_1MW"]>0.
     assert r["missing_pressurised_liquid_water_pressure"]
     assert r["additional_gas_cooler_or_loop_balance_required"]
     assert not r["matched_1MW_service_empirically_qualified"]
