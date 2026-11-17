@@ -157,9 +157,25 @@ def simulate_independent_case(
     b["charge_wakao_particle_Re"]=charge_re
     b["discharge_wakao_particle_Re"]=discharge_re
     b["source_grade_necessary_C"]=min_hot_in_C
+    # A passive bed initially below the imposed source temperature cannot
+    # deliver hotter gas than that source in this reduced-order model. Check
+    # BOTH source-temperature and discharge-flow enthalpy upper bounds first.
+    hypothetical_source_limited_hx=screen_gas_to_liquid_hx_at_sample(
+        hot_gas_in_C=case.charge_hot_gas_C,
+        hot_gas_mass_flow_kg_s=case.discharge_mass_flow_kg_s,
+        hot_gas_cp_J_kgK=bed.gas_cp_J_kgK,contract=contract)
+    b["optimistic_max_hot_gas_source_temperature_hx_gate_pass"]=(
+        hypothetical_source_limited_hx[
+          "thermodynamic_heat_and_pinch_necessary_condition"])
+    b["optimistic_source_max_hot_gas_hx_required_UA_W_K"]=(
+        hypothetical_source_limited_hx[
+          "required_counterflow_UA_W_K_if_thermodynamically_possible"])
     reason=None
     if case.charge_hot_gas_C+1e-9<min_hot_in_C:
         reason="SOURCE_TEMPERATURE_BELOW_MINIMUM_PROCESS_HOT_TERMINAL"
+    elif not hypothetical_source_limited_hx[
+        "thermodynamic_heat_and_pinch_necessary_condition"]:
+        reason="SOURCE_TEMPERATURE_AND_DISCHARGE_FLOW_CANNOT_SUPPLY_1MW_WITH_FINITE_PINCH"
     elif peak_charge_electric_W>case.heater_max_electric_W*(1.+1e-12):
         reason="ASSUMED_HEATER_INITIAL_POWER_OVER_DECLARED_LIMIT"
     elif not all(15<=r<=8500 for r in (charge_re,discharge_re)):
