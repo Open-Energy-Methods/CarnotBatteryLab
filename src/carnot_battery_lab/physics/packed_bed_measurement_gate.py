@@ -124,8 +124,8 @@ class MeasuredBedRun:
                 g.particle_diameter_m,g.porosity)
 
 
-def fixed_run_holdout_protocol(runs:Sequence[MeasuredBedRun],*
-                               reserved_run_ids:Sequence[str],
+def fixed_run_holdout_protocol(runs:Sequence[MeasuredBedRun], *,
+                               holdout_run_ids:Sequence[str],
                                expected_evidence:str=
                                  "ORIGINAL_LAB_MEASURED_UNREVIEWED")->dict:
     if len(runs)<MIN_INDEPENDENT_RUNS:
@@ -137,11 +137,11 @@ def fixed_run_holdout_protocol(runs:Sequence[MeasuredBedRun],*
     if any(x.evidence_class!=expected_evidence for x in runs):
         raise ValueError("wrong experiment evidence class; synthetic tests cannot qualify")
     ids={x.run_id for x in runs}
-    if len(set(reserved_run_ids))!=len(reserved_run_ids) or not set(
-        reserved_run_ids).issubset(ids):
+    if len(set(holdout_run_ids))!=len(holdout_run_ids) or not set(
+        holdout_run_ids).issubset(ids):
         raise ValueError("duplicate, missing or unknown heldout run ID")
-    held=[x for x in runs if x.run_id in reserved_run_ids]
-    train=[x for x in runs if x.run_id not in reserved_run_ids]
+    held=[x for x in runs if x.run_id in holdout_run_ids]
+    train=[x for x in runs if x.run_id not in holdout_run_ids]
     if len(train)<MIN_TRAIN_RUNS or len(held)<MIN_HOLDOUT_RUNS:
         raise ValueError("requires independent train and heldout entire experiments")
     if set(x.group_key for x in train)&set(x.group_key for x in held):
@@ -218,8 +218,8 @@ def pressure_loss_no_fit_score(
 
 
 def score_independent_holdout_thermal_history(
-    run:MeasuredBedRun,*,predicted_temperature_K_by_sensor:Sequence[Sequence[float]],
-    training_run_ids:Sequence[str],reserved_run_ids:Sequence[str])->dict:
+    run:MeasuredBedRun,predicted_temperature_K_by_sensor:Sequence[Sequence[float]],* ,
+    training_run_ids:Sequence[str],holdout_run_ids:Sequence[str])->dict:
     """Time- and axial-TC-aligned prediction; no resampling or fit allowed.
 
     Predictor must have been generated with the source-measured inlet history,
@@ -227,9 +227,9 @@ def score_independent_holdout_thermal_history(
     The function cannot attest how a caller fitted these predictions; therefore
     its output explicitly never constitutes independent source validation.
     """
-    if (run.run_id not in reserved_run_ids or
+    if (run.run_id not in holdout_run_ids or
         run.run_id in training_run_ids or
-        set(training_run_ids)&set(reserved_run_ids)):
+        set(training_run_ids)&set(holdout_run_ids)):
         raise ValueError("heldout run was used for training or was not reserved")
     if len(predicted_temperature_K_by_sensor)!=len(
         run.observed_fluid_temperature_K_by_sensor):
