@@ -1,0 +1,67 @@
+name: m3-4-physical-gas-to-liquid-process-hx-screen
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/liquid_process_hx_gate.py'
+      - 'scripts/run_m3_4_gas_to_liquid_process_hx_screen.py'
+      - 'tests/test_m3_4_liquid_process_hx_gate.py'
+      - 'docs/methods/M3_4_PROCESS_LIQUID_HX_NECESSARY_SCREEN.md'
+      - '.github/workflows/m3-4-physical-gas-to-liquid-process-hx.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/liquid_process_hx_gate.py'
+      - 'scripts/run_m3_4_gas_to_liquid_process_hx_screen.py'
+      - 'tests/test_m3_4_liquid_process_hx_gate.py'
+      - 'docs/methods/M3_4_PROCESS_LIQUID_HX_NECESSARY_SCREEN.md'
+      - '.github/workflows/m3-4-physical-gas-to-liquid-process-hx.yml'
+  workflow_dispatch:
+
+jobs:
+  process-liquid-hx-first-law-pinch-necessary-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CoolProp EOS and scientific test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test strict counterflow enthalpy, 110/150C pinch, liquid phase, and UA uncertainty
+        run: python -m pytest tests/test_m3_4_liquid_process_hx_gate.py tests/test_finite_hx.py -v
+      - name: Independently reproduce original R718 gas TES reverse discharge traces
+        run: |
+          python scripts/run_m3_r718_sequential_service.py \
+            --output results/m3_r718_sequential_hp_tes_discharge_screen.json
+      - name: Audit real existing modeled discharge samples as gas-to-liquid 1MW duty NOT reported process gas
+        run: |
+          python scripts/run_m3_4_gas_to_liquid_process_hx_screen.py \
+            --sequential-model results/m3_r718_sequential_hp_tes_discharge_screen.json \
+            --output results/m3_4_gas_to_liquid_process_hx_necessary_condition.json
+      - name: Fail-closed assertions for actual liquid phase and installed UA unknown
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path("results/m3_4_gas_to_liquid_process_hx_necessary_condition.json").read_text())
+          assert a["research_status"]=="M3_4_LIQUID_PROCESS_HX_SAMPLED_PHYSICAL_NECESSITY_ONLY"
+          contract=a["counterflow_process_contract"]
+          assert contract["return_C"]==110
+          assert contract["supply_C"]==150
+          assert contract["required_thermal_W"]==1_000_000
+          assert 5.97<contract["nominal_constant_cp_process_water_flow_kg_s"]<5.99
+          assert contract["installed_liquid_process_UA_W_K"] is None
+          assert contract["actual_pressurized_process_water_absolute_Pa"] is None
+          assert a["all_requested_liquid_intervals_grade_qualified"] is False
+          assert not a["industrial_H_REF_service_qualified"]
+          assert a["matched_architecture_RTE"] is None
+          assert not a["R718_machine_and_original_source_qualified"]
+          print("M3_4_NO_INVENTED_LIQUID_PROCESS_HX_MATCH_OR_ACTUAL_1MW_DELIVERY_PASS")
+          PY
+      - name: Retain only original numerical gas source and physical HX hypothesis, not industrial proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-4-original-110-150C-liquid-1MW-HX-necessity-NOT-qualified
+          path: results/m3_4_gas_to_liquid_process_hx_necessary_condition.json
+          if-no-files-found: error
+          retention-days: 60
