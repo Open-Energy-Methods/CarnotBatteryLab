@@ -123,14 +123,15 @@ def test_loss_bearing_heater_eta_strictly_increases_model_electricity():
     assert not modified["matched_1MW_service_empirically_qualified"]
 
 
-def test_positive_necessary_screen_from_artificially_preheated_small_bed():
-    # Synthetic positive branch; initialization at 240C is itself a large
-    # EXTERNALLY ASSUMED energy inventory, not an actual 95C charging result.
+def test_positive_necessary_screen_from_explicit_synthetic_small_bed_charge():
+    # Synthetic positive branch: the small bed starts at original 95C
+    # and is explicitly charged for 30 min with assumed 260C gas.
+    # No external initial hot inventory is silently granted.
     g=PackedBedGeometry(length_m=.5,diameter_m=3.,
                         particle_diameter_m=.045,porosity=.4)
     b=GasRockBed(geometry=g,cells=12)
-    scenario=_case(initial_bed_C=240.,charge_hot_gas_C=260.,
-                   charge_duration_s=180.,discharge_duration_s=30.,
+    scenario=_case(initial_bed_C=95.,charge_hot_gas_C=260.,
+                   charge_duration_s=1800.,discharge_duration_s=30.,
                    integration_step_s=30.)
     r=simulate_independent_case(b,scenario)
     assert r["nominal_full_duty_discharge_duration_screened"]
