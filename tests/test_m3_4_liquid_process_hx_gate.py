@@ -62,7 +62,7 @@ def test_unknown_installed_UA_not_claimed_and_assumed_UA_can_fail():
         "hot_gas_cp_J_kgK":1000.}
     out=screen_gas_to_liquid_hx_at_sample(**kw,contract=c)
     assert out["status"]=="MODEL_THERMAL_POSSIBLE_INSTALLED_UA_UNKNOWN"
-    assert out["actual_water_liquid_phase_at_process_supply_confirmed"]
+    assert out["water_liquid_phase_possible_at_ASSUMED_pressure"]
     low=screen_gas_to_liquid_hx_at_sample(
         **kw,contract=replace(c,installed_UA_W_K=1000.))
     assert low["status"]=="BLOCKED_ASSUMED_INSTALLED_UA_INSUFFICIENT"
