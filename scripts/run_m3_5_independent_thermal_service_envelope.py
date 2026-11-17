@@ -95,7 +95,7 @@ def compact_run_result(r:dict)->dict:
             "max_required_ideal_HX_UA_W_K_if_some_steps_possible":
                 d["maximum_required_counterflow_UA_W_K_across_eligible_steps"],
             "maximum_additional_thermal_gas_cooler_W_needed_if_some_steps_pass":
-                d["max_sampled_required_extra_gas_cooler_W_if_1MW"],
+                d["max_interval_mean_additional_gas_cooler_thermal_W_if_1MW"],
             "model_storage_first_law_full_cycle_residual_J":
                 d["combined_storage_first_law_residual_J"],
             "first_failed_discharge_interval":
