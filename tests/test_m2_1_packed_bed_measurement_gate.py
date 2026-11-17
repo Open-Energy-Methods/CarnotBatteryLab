@@ -68,7 +68,7 @@ def test_manifest_only_never_elevates_metadata_to_observations():
 def test_good_synthetic_protocol_cannot_be_used_as_measured_acceptance():
     runs=[_run(i) for i in range(4)]
     m=fixed_run_holdout_protocol(
-        runs,reserved_run_ids=["synthetic-2","synthetic-3"],
+        runs,holdout_run_ids=["synthetic-2","synthetic-3"],
         expected_evidence="SYNTHETIC_UNIT_TEST")
     assert m["reserved_run_count"]==2
     assert m["training_run_count"]==2
@@ -76,7 +76,7 @@ def test_good_synthetic_protocol_cannot_be_used_as_measured_acceptance():
     assert m["simulated_observation_count_used_as_independent_experiment"]==0
     with pytest.raises(ValueError,match="wrong experiment evidence class"):
         fixed_run_holdout_protocol(
-            runs,reserved_run_ids=["synthetic-2","synthetic-3"])
+            runs,holdout_run_ids=["synthetic-2","synthetic-3"])
 
 
 def test_replication_and_same_experiment_cannot_create_fake_independence():
@@ -84,7 +84,7 @@ def test_replication_and_same_experiment_cannot_create_fake_independence():
     rr[3]=rr[2]
     with pytest.raises(ValueError,match="duplicated"):
         fixed_run_holdout_protocol(
-            rr,reserved_run_ids=["synthetic-2","synthetic-3"],
+            rr,holdout_run_ids=["synthetic-2","synthetic-3"],
             expected_evidence="SYNTHETIC_UNIT_TEST")
 
 
@@ -131,10 +131,10 @@ def test_excessive_pipe_correction_blocks_pressure_validation():
 
 
 def test_thermal_history_scores_only_resolved_sensor_positions_and_times():
-    r=_run()
+    r=_run(1)
     p=[list(row) for row in r.observed_fluid_temperature_K_by_sensor]
     res=score_independent_holdout_thermal_history(
-        r,p,training_run_ids=["synthetic-0"],reserved_run_ids=["synthetic-1"])
+        r,p,training_run_ids=["synthetic-0"],holdout_run_ids=["synthetic-1"])
     assert res["status"]=="POINTWISE_THERMAL_HISTORY_DIAGNOSTIC_ONLY"
     assert res["total_correlated_timeseries_values"]==8
     assert all(x["MAE_K"]==0. for x in res["per_position_error"])
@@ -146,14 +146,14 @@ def test_train_holdout_leakage_and_unsupported_position_fail_closed():
     p=[list(row) for row in r.observed_fluid_temperature_K_by_sensor]
     with pytest.raises(ValueError,match="heldout run"):
         score_independent_holdout_thermal_history(
-            r,p,training_run_ids=[r.run_id],reserved_run_ids=[r.run_id])
+            r,p,training_run_ids=[r.run_id],holdout_run_ids=[r.run_id])
     with pytest.raises(ValueError,match="positions"):
         score_independent_holdout_thermal_history(
-            r,p[:1],training_run_ids=[],reserved_run_ids=[r.run_id])
+            r,p[:1],training_run_ids=[],holdout_run_ids=[r.run_id])
     with pytest.raises(ValueError,match="timestamps"):
         score_independent_holdout_thermal_history(
             r,[(300.,310.),(300.,310.)],
-            training_run_ids=[],reserved_run_ids=[r.run_id])
+            training_run_ids=[],holdout_run_ids=[r.run_id])
 
 
 def test_mixed_experimental_rig_never_pooled_even_if_same_fluid():
@@ -161,5 +161,5 @@ def test_mixed_experimental_rig_never_pooled_even_if_same_fluid():
     rr[2]=replace(rr[2],apparatus_id="SECOND_SYNTHETIC_RIG")
     with pytest.raises(ValueError,match="different apparatus"):
         fixed_run_holdout_protocol(rr,
-            reserved_run_ids=["synthetic-2","synthetic-3"],
+            holdout_run_ids=["synthetic-2","synthetic-3"],
             expected_evidence="SYNTHETIC_UNIT_TEST")
