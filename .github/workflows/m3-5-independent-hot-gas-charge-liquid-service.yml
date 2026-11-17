@@ -1,0 +1,78 @@
+name: m3-5-independent-hot-gas-charge-liquid-service-envelope
+
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/independent_thermal_envelope.py'
+      - 'scripts/run_m3_5_independent_thermal_service_envelope.py'
+      - 'tests/test_m3_5_independent_thermal_envelope.py'
+      - 'docs/methods/M3_5_THERMAL_GRADE_OPERATING_ENVELOPE.md'
+      - '.github/workflows/m3-5-independent-hot-gas-charge-liquid-service.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/independent_thermal_envelope.py'
+      - 'scripts/run_m3_5_independent_thermal_service_envelope.py'
+      - 'tests/test_m3_5_independent_thermal_envelope.py'
+      - 'docs/methods/M3_5_THERMAL_GRADE_OPERATING_ENVELOPE.md'
+      - '.github/workflows/m3-5-independent-hot-gas-charge-liquid-service.yml'
+  workflow_dispatch:
+
+jobs:
+  independently-declared-hot-gas-to-1mw-liquid-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install original packed bed and CoolProp water saturation physics
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test no fabricated compressor map or installed liquid HX and 1MW positive/negative thermal hypotheses
+        run: |
+          python -m pytest tests/test_m3_5_independent_thermal_envelope.py tests/test_m3_4_liquid_process_hx_gate.py -v
+      - name: Reproduce 150–260C, 4minute–8hour charging and 1–2hour discharge scenarios
+        run: |
+          python scripts/run_m3_5_independent_thermal_service_envelope.py \
+            --output results/m3_5_independent_hot_gas_liquid_heat_service_envelope.json
+      - name: Strictly prohibit architecture service/roundtrip claims even if model gate passes
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          x=json.loads(Path("results/m3_5_independent_hot_gas_liquid_heat_service_envelope.json").read_text())
+          assert x["research_milestone"]=="M3_5_COMPRESSOR_INDEPENDENT_THERMAL_ENVELOPE"
+          assert x["case_count"]==9 and len(x["cases"])==9
+          assert x["cases"]["low_grade_150C_8h"]["blocker"]=="SOURCE_TEMPERATURE_BELOW_MINIMUM_PROCESS_HOT_TERMINAL"
+          assert x["cases"]["source_hotflow_180C_4h"]["blocker"]=="SOURCE_TEMPERATURE_AND_DISCHARGE_FLOW_CANNOT_SUPPLY_1MW_WITH_FINITE_PINCH"
+          assert not x["actual_industrial_qualified_cases"]
+          assert x["round_trip_efficiency"] is None
+          assert x["matched_service_architecture_ranking"] is None
+          assert x["grid_convergence_diagnostic"] is not None
+          for case in x["cases"].values():
+              assert case["required_process_energy_J"]==1e6*case["case"]["discharge_duration_s"]
+              assert case["actual_industrial_process_heat_qualified_J"]==0.
+              assert case["architecture_or_electrical_round_trip_efficiency"] is None
+              assert case["working_gas_absolute_pressure_Pa"] is None
+              assert case["R600_R718_compressor_dependencies_used"] is False
+              assert not case["matched_1MW_service_empirically_qualified"]
+              if case["charge_model_executed"]:
+                  c=case["charging"]
+                  d=case["discharge"]
+                  assert abs(c["charge_integrated_first_law_residual_J"]) < 1e-5*max(1,abs(c["total_model_heat_put_into_bed_from_source_gas_J"]))
+                  assert abs(d["combined_storage_first_law_residual_J"]) < 1e-5*max(1,abs(c["total_model_heat_put_into_bed_from_source_gas_J"]))
+                  assert case["simulated_process_heat_delivered_J"] is None
+                  assert case["missing_pressurised_liquid_water_pressure"]
+                  assert case["additional_gas_cooler_or_loop_balance_required"]
+                  assert case["screened_full_duty_prefix_duration_s"] <= case["case"]["discharge_duration_s"]
+          for k,v in x["grid_convergence_diagnostic"]["sampled_mesh_time_diagnostic"].items():
+              assert math.isfinite(v["last_reverse_discharge_gas_outlet_final_C"])
+          print("M3_5_INDEPENDENT_NUMERICAL_ENVELOPE_VERIFIED_NOT_HARDWARE_OR_EXPERIMENT")
+          PY
+      - name: Archive model-only operating envelope and mesh-time diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-5-hypothetical-thermal-envelope-1MW-liquid-NOT-validated
+          path: results/m3_5_independent_hot_gas_liquid_heat_service_envelope.json
+          if-no-files-found: error
+          retention-days: 90
