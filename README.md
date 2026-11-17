@@ -279,3 +279,13 @@ A public software licence is **not selected** until the repository owner chooses
 one. Do not imply this pre-alpha archive is already licensed for redistribution.
 A CITATION.cff and dataset DOI will be added after the contributor attribution,
 licence, provenance and scientific release strategy are approved.
+
+<!-- portfolio-reader-guide-2026:start -->
+## Engineering portfolio reader's guide (November 2026)
+
+**What to inspect:** The new HTHP/TES research foundation: read the finite-heat-exchanger and charge-side coupling methodology alongside the withdrawn legacy architecture ranking and unresolved compressor/experimental evidence.
+
+**Portfolio context:** [Project or engineering selection](https://abhijith-sivaprasadan.github.io/projects/carnot-battery-lab.html) · [Armada 2026 employer-facing selection](https://abhijith-sivaprasadan.github.io/for/armada-2026.html).
+
+These navigation links do not supersede the research status, assumptions, provenance, licences or validation limits documented above. This independent research project is not an employer-commissioned deliverable or externally qualified engineering product.
+<!-- portfolio-reader-guide-2026:end -->
