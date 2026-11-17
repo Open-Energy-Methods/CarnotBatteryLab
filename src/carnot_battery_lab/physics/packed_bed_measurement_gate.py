@@ -164,12 +164,14 @@ def fixed_run_holdout_protocol(runs:Sequence[MeasuredBedRun], *,
         "simulated_observation_count_used_as_independent_experiment":0,
         "source_measurement_sha256s":{
             x.run_id:x.source_sha256 for x in runs},
-        "source_sensor_units_and_calibration_explicit":True,
+        "source_sensor_units_and_calibration_references_provided":True,
+        "sensor_calibration_and_source_authenticity_independently_verified":False,
         "bed_geometry_identical_across_runs":same_run_geometry,
         "experimental_tap_to_tap_pressure_loss_independently_correctable":
             pressure_supported,
         "time_aligned_thermal_history_validation_executed":False,
         "source_temperature_and_pressure_holdout_predictions_accepted":False,
+        "same_apparatus_train_and_holdout_not_independent_campaign":True,
         "fully_independent_experimental_campaign":False,
         "exact_H_REF_bed_or_machine_qualified":False,
     }
