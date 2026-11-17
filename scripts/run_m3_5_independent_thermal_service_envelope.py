@@ -157,6 +157,77 @@ def grid_audit(bed:GasRockBed,reference:IndependentThermalCase)->dict:
     }
 
 
+
+def charge_duration_threshold_mesh_study(
+    bed:GasRockBed,reference:IndependentThermalCase)->dict:
+    """Find a discrete, model-only charging-time bracket, not plant minimum.
+
+    We use the 220C charge source and 15kg/s discharge baseline. Whole-run
+    first/mean/final thermal gates are evaluated for 1h at N16/N32/N64.
+    Search a frozen 10-minute charge-time grid from 10 minutes to 4 hours.
+    All source temperature, pressure uncertainty, model calibration and
+    continuous-between-samples limitations remain in force.
+    """
+    step_s=600.
+    limit_steps=24
+    entries={}
+    for cells in (16,32,64):
+        b=replace(bed,cells=cells)
+        memo={}
+        def at(k:int)->dict:
+            if k not in memo:
+                c=replace(reference,charge_duration_s=k*step_s,
+                          integration_step_s=step_s)
+                memo[k]=simulate_independent_case(b,c)
+            return memo[k]
+        if at(limit_steps)["nominal_full_duty_discharge_duration_screened"]:
+            lo,hi=0,limit_steps
+            while hi-lo>1:
+                mid=(lo+hi)//2
+                if at(mid)["nominal_full_duty_discharge_duration_screened"]:
+                    hi=mid
+                else:
+                    lo=mid
+            # Check the adjacent grid bracket (not a continuous guarantee).
+            candidate=at(hi)
+            preceding=at(lo) if lo else None
+            assert candidate["nominal_full_duty_discharge_duration_screened"]
+            assert preceding is None or not preceding[
+                "nominal_full_duty_discharge_duration_screened"]
+            entries[f"cells_{cells}"]={
+                "first_passing_declared_charge_duration_s":hi*step_s,
+                "last_failing_declared_charge_duration_s":(
+                    lo*step_s if lo else None),
+                "threshold_is_sampled_10min_grid_not_actual_optimum":True,
+                "first_passing_case_model_ideal_heater_MWh":candidate[
+                    "charging"]["model_charge_heater_electricity_J_not_real_plant"]/3.6e9,
+                "first_passing_model_source_gas_heat_GJ":candidate[
+                    "charging"]["total_model_heat_put_into_bed_from_source_gas_J"]/1e9,
+                "first_passing_discharge_prefix_duration_s":candidate[
+                    "screened_full_duty_prefix_duration_s"],
+                "number_of_simulated_durations_binary_search":len(memo),
+                "synthetic_source_and_HX_hardware_not_qualified":True,
+            }
+        else:
+            entries[f"cells_{cells}"]={
+                "status":"NO_FULL_HOUR_SAMPLED_THERMAL_PASS_FOR_CHARGE_UP_TO_4H",
+                "tested_max_charge_duration_s":limit_steps*step_s,
+                "threshold_is_sampled_10min_grid_not_actual_optimum":True,
+                "number_of_simulated_durations_binary_search":len(memo),
+                "synthetic_source_and_HX_hardware_not_qualified":True,
+            }
+    return {
+        "hypothesis":"220C_gas_charge_25kg_s_110C_return_15kg_s_discharge_1h",
+        "charge_duration_grid_resolution_s":step_s,
+        "results_by_axial_mesh":entries,
+        "case_ordering_assumed_monotone_for_this_reduced_linear_model":True,
+        "geometric_mesh_dependence_inferred_from_three_N_values":True,
+        "continuous_time_heat_delivery_guarantee":False,
+        "true_minimum_physical_charging_duration_established":False,
+        "all_results_model_only_not_experimental":True,
+    }
+
+
 def run(*,with_grid_audit:bool=True)->dict:
     bed=GasRockBed(cells=16)
     assumptions=declared_scenarios()
@@ -167,10 +238,14 @@ def run(*,with_grid_audit:bool=True)->dict:
                    sort_keys=True).encode()).hexdigest()
     data["summary_rows_NOT_EMPIRICAL"]=[
         compact_run_result(x) for x in data["cases"].values()]
-    data["grid_convergence_diagnostic"]=(
-        grid_audit(bed,next(x for x in assumptions
-                            if x.name=="charge_220C_4h"))
-        if with_grid_audit else None)
+    if with_grid_audit:
+        reference=next(x for x in assumptions if x.name=="charge_220C_4h")
+        data["grid_convergence_diagnostic"]=grid_audit(bed,reference)
+        data["charge_duration_threshold_mesh_diagnostic"]=(
+            charge_duration_threshold_mesh_study(bed,reference))
+    else:
+        data["grid_convergence_diagnostic"]=None
+        data["charge_duration_threshold_mesh_diagnostic"]=None
     return data
 
 
@@ -188,6 +263,8 @@ def main():
     if x["grid_convergence_diagnostic"]:
         print("M3_5_DIAGNOSTIC_MESH_TIMESTEP",
               x["grid_convergence_diagnostic"])
+        print("M3_5_MODEL_ONLY_CHARGE_DURATION_THRESHOLD_MESH",
+              x["charge_duration_threshold_mesh_diagnostic"])
     print("M3_5_ASSUMPTION_SHA256",x["input_assumptions_sha256"])
     print("M3_5_MODEL_ONLY_POSSIBLE_SAMPLED_CASES",
           x["model_only_possible_thermal_grade_cases"])
