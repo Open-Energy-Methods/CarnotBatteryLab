@@ -289,12 +289,12 @@ def simulate_independent_case(
                      for x in checks.values())
         required_UA=(max(x["required_counterflow_UA_W_K_if_thermodynamically_possible"]
                          for x in checks.values()) if eligible else None)
-        model_electrical_cooler_W=(
+        model_additional_gas_cooler_thermal_W=(
            max(0.,r.signed_heat_to_process_gas_J/dt_s-contract.thermal_duty_W)
            if eligible else None)
         if eligible:
             max_required_UA=max(max_required_UA,required_UA)
-            max_cooler_W=max(max_cooler_W,model_electrical_cooler_W)
+            max_cooler_W=max(max_cooler_W,model_additional_gas_cooler_thermal_W)
         if eligible and prefix_active:
             thermal_prefix_s+=dt_s
         else:
@@ -318,7 +318,7 @@ def simulate_independent_case(
             "assumed_1MW_process_liquid_heat_J_if_conditional":(
                 contract.thermal_duty_W*dt_s if eligible else None),
             "extra_gas_cooler_duty_W_to_enforce_110C_return_only_if_pass":
-                model_electrical_cooler_W,
+                model_additional_gas_cooler_thermal_W,
             "gas_return_110C_requires_unmodelled_extra_cooler_or_different_loop":
                 True,
             "model_pressure_drop_Pa_Ergun_uncalibrated":
@@ -365,7 +365,7 @@ def simulate_independent_case(
                 contract.process_liquid_mass_flow_kg_s,
             "maximum_required_counterflow_UA_W_K_across_eligible_steps":
                 max_required_UA if max_required_UA>0 else None,
-            "max_sampled_required_extra_gas_cooler_W_if_1MW":
+            "max_interval_mean_additional_gas_cooler_thermal_W_if_1MW":
                 max_cooler_W if max_required_UA>0 else None,
             "bed_energy_after_discharge_J":discharge_end_U,
             "discharge_integrated_first_law_residual_J":discharge_residual,
