@@ -5,6 +5,9 @@ assumption, not a verified plant design.
 """
 from dataclasses import replace
 import pytest
+# Foundation CI deliberately excludes optional real-fluid EOS; the dedicated
+# M3.4 research workflow installs it and executes the full physics tests.
+pytest.importorskip('CoolProp')
 from carnot_battery_lab.physics.liquid_process_hx_gate import (
     ProcessLiquidHXContract,HXDomainError,
     minimum_saturated_water_pressure_Pa,
