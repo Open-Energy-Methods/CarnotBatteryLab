@@ -1,0 +1,58 @@
+name: m2-1-primary-packedbed-experimental-evidence-gate
+on:
+  push:
+    paths:
+      - 'scripts/discover_m2_packed_bed_original_data.py'
+      - 'src/carnot_battery_lab/physics/packed_bed_measurement_gate.py'
+      - 'tests/test_m2_1_packed_bed_measurement_gate.py'
+      - 'docs/methods/M2_1_PRIMARY_PACKED_BED_EXPERIMENT_DATA_PLAN.md'
+      - '.github/workflows/m2-1-primary-packedbed-experimental-evidence.yml'
+  pull_request:
+    paths:
+      - 'scripts/discover_m2_packed_bed_original_data.py'
+      - 'src/carnot_battery_lab/physics/packed_bed_measurement_gate.py'
+      - 'tests/test_m2_1_packed_bed_measurement_gate.py'
+      - 'docs/methods/M2_1_PRIMARY_PACKED_BED_EXPERIMENT_DATA_PLAN.md'
+      - '.github/workflows/m2-1-primary-packedbed-experimental-evidence.yml'
+  workflow_dispatch:
+
+jobs:
+  original-independent-packedbed-data-acquisition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install scientific test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test physical holdout eligibility, original sensor traces and Ergun correction controls
+        run: python -m pytest tests/test_m2_1_packed_bed_measurement_gate.py -v
+      - name: Inspect independently published real packed-bed test dataset metadata
+        run: |
+          python scripts/discover_m2_packed_bed_original_data.py \
+            --output results/m2_1_external_packed_bed_primary_metadata.json
+      - name: Block all claims of original measured breakthrough/pressure-loss validation from source metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path("results/m2_1_external_packed_bed_primary_metadata.json").read_text())
+          a,b=d["dataset_sources"]
+          assert a["doi"]=="10.17632/3pp86gdvh4.2"
+          assert b["doi"]=="10.17632/fgn79fzg7x.1"
+          assert a["declared_experiment_count_in_publisher_description"]==9
+          assert all(not x["actual_experiment_data_downloaded"] for x in (a,b))
+          assert all(not x["measured_temperature_or_pressure_validated"] for x in (a,b))
+          assert not d["original_H_REF_packed_bed_model_experimentally_qualified"]
+          assert not d["entire_Carnot_battery_architecture_matched_service"]
+          print("M2_1_EXTERNAL_ORIGINAL_AIR_PACKED_BED_SOURCE_REGISTRY_NOT_FAKE_VALIDATION")
+          PY
+      - name: Retain metadata only, no third-party measured time histories
+        uses: actions/upload-artifact@v4
+        with:
+          name: m2-1-original-experimental-source-metadata-not-model-validation
+          path: results/m2_1_external_packed_bed_primary_metadata.json
+          if-no-files-found: error
+          retention-days: 60
