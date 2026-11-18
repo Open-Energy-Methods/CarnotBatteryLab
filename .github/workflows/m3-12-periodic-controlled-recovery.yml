@@ -1,0 +1,50 @@
+name: m3-12-periodic-controlled-recovery
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'src/carnot_battery_lab/physics/periodic_recovery.py'
+      - 'scripts/run_m3_12_periodic_controlled_recovery.py'
+      - 'tests/test_m3_12_periodic_recovery.py'
+      - '.github/workflows/m3-12-periodic-controlled-recovery.yml'
+      - 'docs/methods/M3_12_PERIODIC_CONTROLLED_RECOVERY.md'
+  workflow_dispatch:
+jobs:
+  model-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_10_closed_real_air_cycle.py tests/test_m3_11_reverse_flow_recovery.py tests/test_m3_12_periodic_recovery.py -q
+      - run: python scripts/run_m3_12_periodic_controlled_recovery.py
+      - name: Audit numerical limits and conservative accounting
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("results/m3_12_periodic_controlled_recovery.json").read_text())
+          assert len(x["cases"])==7 and x["Carnot_battery_RTE"] is None and not x["industrial_matched_service"]
+          for name,item in x["cases"].items():
+              r=item["result"]
+              assert len(r["cycle_records"])==10
+              assert abs(r["repeated_sequence_mass_residual_kg"])<1e-8
+              assert abs(r["repeated_sequence_electrical_residual_J"])<.2
+              for p in r["cycle_records"]:
+                  d=p["discharge"]
+                  assert 0<=d["water_target_band_duration_s"]<=d["duration_s"]
+                  assert d["water_target_band_heat_J"]>=-1e-6
+                  for z in (p["charge"],d):
+                      assert max(abs(v) for v in z["component_thermal_residuals_J"].values())<.2
+              a=item["audit"]
+              assert a["approximate_periodic_model_gate_pass"]==all(z["pass"] for z in a["rows"][-2:])
+          print("M3_12_NUMERICAL_ACCOUNTING_PASS_PERIODIC_OUTCOMES_REPORTED_SEPARATELY")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m3-12-periodic-controlled-recovery-model-only
+          path: results/m3_12_periodic_controlled_recovery.json
+          retention-days: 90
