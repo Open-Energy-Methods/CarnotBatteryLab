@@ -167,7 +167,8 @@ def simulate_coupled_transient_hx(
                 water_mass_flow_kg_s=water_flow,
                 water_inlet_K=water_inlet_K,dt_s=dt,
                 previous_gas_through_fraction=valve_fraction,
-                required_supply_K=minimum_grade_K)
+                required_supply_K=minimum_grade_K,
+                elapsed_discharge_time_s=i*trial.transient_step_s)
             valve_fraction=ctrl["selected_through_hx_gas_fraction"]
             h=ctrl["hx_step"]
             if not ctrl["model_only_interval_nominal_150C_control_gate"]:
