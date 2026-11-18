@@ -19,7 +19,7 @@ from .liquid_process_hx_gate import ProcessLiquidHXContract
 from .independent_thermal_envelope import IndependentThermalCase,_steps,_hydraulic_re
 from .transient_liquid_hx import (
     HXDynamicState,TransientHXAssumptions,advance_transient_hx,
-    eos_interpolation_check,
+    eos_interpolation_check,required_process_water_flow_from_real_enthalpy,
 )
 
 
@@ -110,9 +110,13 @@ def simulate_coupled_transient_hx(
         raise RuntimeError("coupled dynamic HX initial source heat ledger inconsistent")
     pre_hx=HXDynamicState.initial(hx)
     s_hx=pre_hx
-    water_flow=requested_process.process_liquid_mass_flow_kg_s
     water_inlet_K=requested_process.liquid_return_C+273.15
     minimum_grade_K=requested_process.liquid_supply_C+273.15
+    water_service_eos=required_process_water_flow_from_real_enthalpy(
+        inlet_K=water_inlet_K,outlet_K=minimum_grade_K,
+        duty_W=requested_process.thermal_duty_W,
+        pressure_Pa=hx.assumed_liquid_inlet_absolute_pressure_Pa)
+    water_flow=water_service_eos["original_1MW_real_water_required_flow_kg_s"]
     bed_gas_heat=0.;bed_wall=0.;bed_blower=0.
     hx_gas_input_boundary=0.;hx_water_out=0.;hx_cooler=0.
     hx_conditioning_heater=0.;hx_pump_and_fan=0.
@@ -233,7 +237,10 @@ def simulate_coupled_transient_hx(
           "required_liquid_return_C":110.,
           "required_liquid_supply_C":150.,
           "required_thermal_W":1.e6,
-          "derived_process_liquid_flow_kg_s":water_flow,
+          "derived_process_liquid_flow_kg_s_from_CoolProp_h":water_flow,
+          "original_fixed_cp_M3_4_liquid_flow_kg_s_NOT_USED":
+              requested_process.process_liquid_mass_flow_kg_s,
+          "water_CoolProp_EOS_at_ASSUMED_pressure":water_service_eos,
           "installed_HX_UA_or_liquid_pressure_measured":False,
       },
       "charging": {
