@@ -278,9 +278,11 @@ def advance_transient_hx(
     # NOT a continuous bound between numerical solver nodes.
     node_approach=min(float(np.min(
         sol.y[:N,k]-sol.y[N:2*N,k])) for k in range(sol.y.shape[1]))
+    min_water_outlet_K_at_solver_nodes=float(np.min(sol.y[N,:]))
     actual_mean_water_thermal_W=ib_l/dt_s
     qualifies=bool(
         pressure["assumed_model_liquid_single_phase"]
+        and min_water_outlet_K_at_solver_nodes>=required_water_supply_K-1e-8
         and t_water_first>=required_water_supply_K-1e-8
         and t_water_last>=required_water_supply_K-1e-8
         and actual_mean_water_thermal_W>=1.e6*(1.-1e-7)
@@ -295,6 +297,8 @@ def advance_transient_hx(
         "water_outlet_flow_average_heat_W":actual_mean_water_thermal_W,
         "model_nominal_water_supply_and_1MW_in_step":qualifies,
         "minimum_gas_minus_water_local_nodal_difference_K":node_approach,
+        "minimum_water_outlet_temperature_K_at_numerical_solver_nodes":
+            min_water_outlet_K_at_solver_nodes,
         "minimum_is_discrete_solver_nodes_not_continuous_guarantee":True,
         "liquid_outlet_lower_than_required_at_start":bool(
             t_water_first<required_water_supply_K),
