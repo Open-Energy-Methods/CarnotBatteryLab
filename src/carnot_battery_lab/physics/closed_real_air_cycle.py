@@ -108,17 +108,16 @@ def qualified_water_heat(t,solution,outlet_index,ledger_index,threshold_h):
     def margin(z):return float(solution(z)[outlet_index]-threshold_h)
     def ledger(z):return float(solution(z)[ledger_index])
     margins=[margin(z) for z in t]
-    roots=[t[0],t[-1]]
-    for l,r,fl,fr in zip(t[:-1],t[1:],margins[:-1],margins[1:]):
-        if fl==0:roots.append(l)
-        if fr==0:roots.append(r)
-        if fl*fr<0:roots.append(brentq(margin,l,r))
-    cuts=sorted(set(roots))
     seconds=heat=0.
-    for l,r in zip(cuts[:-1],cuts[1:]):
-        if margin((l+r)/2)>=0:
-            seconds+=r-l
-            heat+=ledger(r)-ledger(l)
+    # Work per accepted step so an unresolved local excursion cannot
+    # incorrectly classify a much larger region spanning many steps.
+    for left,right,fl,fr in zip(t[:-1],t[1:],margins[:-1],margins[1:]):
+        cuts=[left,right]
+        if fl*fr<0:cuts.insert(1,brentq(margin,left,right))
+        for l,r in zip(cuts[:-1],cuts[1:]):
+            if margin((l+r)/2)>=0:
+                seconds+=r-l
+                heat+=ledger(r)-ledger(l)
     return float(seconds),float(heat)
 
 
