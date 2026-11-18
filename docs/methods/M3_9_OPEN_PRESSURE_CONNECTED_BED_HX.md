@@ -64,6 +64,26 @@ Run seven predeclared 60 s cases: meshes 2/2, 4/4 and 8/8; increased HX minor lo
 
 The dedicated workflow archives results/m3_9_open_air_water_train.json. Inspect the actual numerical grid sensitivity and separate energy/mass residuals before using any results. No qualification or RTE may be promoted.
 
+## Verified numerical results
+
+[Initial dedicated CI run 44406525734](https://github.com/Open-Energy-Methods/CarnotBatteryLab/actions/runs/44406525734) passed 21 M3.8/M3.9 tests and all seven declared 60 s cases. These are results for the small open pressure-driven prototype, not the industrial contract.
+
+| Case | Final water °C | Mean water thermal duty kW | Integrated shared-interface gas mass kg | Final gas exit kg/s |
+|---|---:|---:|---:|---:|
+| 2/2 cells | 136.398 | 1.367 | 2.6002 | 0.04338 |
+| 4/4 cells | 143.224 | 1.802 | 2.5676 | 0.04285 |
+| 8/8 cells | 147.393 | 2.097 | 2.5499 | 0.04257 |
+| HX minor-loss K=40, 4/4 | 139.412 | 1.599 | 1.9957 | 0.03321 |
+| 100 Pa reservoir head, 4/4 | 137.071 | 1.474 | 1.7315 | 0.02887 |
+| Cold solid, 4/4 | 110.000 | -0.00000863 | 2.8320 | 0.04720 |
+| HX UA=30 W/K, 4/4 | 126.965 | 0.752 | 2.5634 | 0.04279 |
+
+The hypothetical change in HX minor-loss coefficient 2→40 reduces the integrated gas mass at the shared bed-HX interface by 22.27%, and mean water duty by 11.27%. Lowering reservoir pressure head from 200 to 100 Pa reduces the same integrated mass by 32.56%. Because the initial gas inventories can change, interface and boundary flows need not be equal instantaneously. The cold-solid case has negligible signed water heat rather than a positive invented useful output.
+
+Across the seven cases the largest absolute combined mass residual is ~1.34e-15 kg and combined energy residual ~1.50e-8 J. Both component ledgers were also checked. Maximum accepted-node interstitial/HX Mach is ~0.0524. These residuals verify conservation of the reduced equations, not fidelity of physical parameters.
+
+Final water-temperature shifts of 6.826 K (2/2→4/4) and 4.169 K (4/4→8/8) are large. Mean water heat also shifts materially. Joint mesh refinement is not an independent convergence study of each component, and no accepted error bound or extrapolated design output is asserted. None of the baseline mesh cases reaches a final water temperature of 150°C in the 60 s window, and the prescribed 0.02 kg/s water stream is deliberately not the original 1 MW service. Do not scale these results to an industrial unit or infer its efficiency.
+
 ## Remaining gates
 
 A closed pressure-connected air return loop needs a mass-conserving blower pressure/flow/enthalpy relation, real pressure inventory, gas cooler with explicit secondary sink, realistic valve and branch flow, startup charge, and a validated variable-Re heat-transfer closure. The current flow train cannot meet the original industrial benchmark by mere scaling. Original Weber measured sensor files, independent calibration and whole-run holdout validation remain unavailable; compressor maps and industrial water HX hardware are separate blockers. No industrial 1 MW service, experimental performance or electrical Carnot RTE is established here.
