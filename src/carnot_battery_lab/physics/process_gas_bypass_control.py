@@ -27,6 +27,8 @@ class GasBypassControllerAssumptions:
     permitted_nodal_water_outlet_error_K:float=.5
     maximum_bisection_steps:int=13
     startup_full_flow_seconds:float=0.
+    objective:str="interval_mean_duty"
+    maximum_fraction_rate_per_s:float|None=None
 
     def __post_init__(self):
         props=(self.minimum_hx_gas_fraction,
@@ -48,6 +50,13 @@ class GasBypassControllerAssumptions:
             or not isfinite(self.startup_full_flow_seconds)
             or self.startup_full_flow_seconds<0):
             raise ValueError("invalid nonnegative full-flow startup period")
+        if self.objective not in ("interval_mean_duty","terminal_temperature"):
+            raise ValueError("unknown predictive objective")
+        if self.maximum_fraction_rate_per_s is not None and (
+            not isinstance(self.maximum_fraction_rate_per_s,(float,int)) or
+            not isfinite(self.maximum_fraction_rate_per_s) or
+            self.maximum_fraction_rate_per_s<=0):
+            raise ValueError("invalid physical valve rate hypothesis")
 
 
 def advance_hx_with_predictive_gas_bypass(
@@ -123,25 +132,35 @@ def advance_hx_with_predictive_gas_bypass(
     # model in every possible state. Independently sample the entire valve
     # range before trusting a binary search.
     fractions=[minimum+(1-minimum)*i/4 for i in range(5)]
-    values=[test(f)["water_outlet_flow_average_heat_W"] for f in fractions]
-    monotone=all(b>=a-1e-6*settings.interval_mean_duty_target_W
-                 for a,b in zip(values,values[1:]))
-    target=settings.interval_mean_duty_target_W
+    def objective_value(step):
+        if settings.objective=="terminal_temperature":
+            return step["water_outlet_end_K"]
+        return step["water_outlet_flow_average_heat_W"]
+    target=(required_supply_K if settings.objective=="terminal_temperature"
+            else settings.interval_mean_duty_target_W)
+    values=[objective_value(test(f)) for f in fractions]
+    monotone=all(b>=a-1e-6*target for a,b in zip(values,values[1:]))
     if not monotone:
         requested=1.
-        status="NONMONOTONE_DYNAMIC_HX_DUTY_VS_GAS_FRACTION"
+        status=("NONMONOTONE_TERMINAL_TEMPERATURE_VS_GAS_FRACTION"
+                if settings.objective=="terminal_temperature" else
+                "NONMONOTONE_DYNAMIC_HX_DUTY_VS_GAS_FRACTION")
     elif values[-1]<target:
         requested=1.
-        status="INSUFFICIENT_THERMAL_DUTY_AT_FULL_HX_GAS_FLOW"
+        status=("TERMINAL_TEMPERATURE_LOW_AT_FULL_HX_GAS_FLOW"
+                if settings.objective=="terminal_temperature" else
+                "INSUFFICIENT_THERMAL_DUTY_AT_FULL_HX_GAS_FLOW")
     elif values[0]>target:
         requested=minimum
-        status="MINIMUM_HX_GAS_FLOW_STILL_OVERDELIVERS"
+        status=("TERMINAL_TEMPERATURE_HIGH_AT_MINIMUM_HX_GAS_FLOW"
+                if settings.objective=="terminal_temperature" else
+                "MINIMUM_HX_GAS_FLOW_STILL_OVERDELIVERS")
     else:
         low=minimum
         high=1.
         for _ in range(settings.maximum_bisection_steps):
             mid=(low+high)/2.
-            value=test(mid)["water_outlet_flow_average_heat_W"]
+            value=objective_value(test(mid))
             if value<target:low=mid
             else:high=mid
         requested=(low+high)/2.
@@ -149,17 +168,18 @@ def advance_hx_with_predictive_gas_bypass(
 
     # Valve slew constraint may prevent following the target, even in a
     # static feasible thermal envelope. Do not discard actuator dynamics.
-    lower=max(minimum,previous_gas_through_fraction-
-              settings.maximum_fraction_step_change)
-    upper=min(1.,previous_gas_through_fraction+
-              settings.maximum_fraction_step_change)
+    max_change=settings.maximum_fraction_step_change
+    if settings.maximum_fraction_rate_per_s is not None:
+        max_change=min(max_change,settings.maximum_fraction_rate_per_s*dt_s)
+    lower=max(minimum,previous_gas_through_fraction-max_change)
+    upper=min(1.,previous_gas_through_fraction+max_change)
     selected=min(max(requested,lower),upper)
     actuator_limited=abs(selected-requested)>1e-12
     result=test(selected)
     achieved=result["water_outlet_flow_average_heat_W"]
     # Original process water is UNBYPASSED. Exactly the same water flow goes
     # through the HX, so interval mean water duty is its actual enthalpy flow.
-    deviation=achieved-target
+    deviation=achieved-settings.interval_mean_duty_target_W
     min_kelvin=result[
         "minimum_water_outlet_temperature_K_at_numerical_solver_nodes"]
     max_kelvin=result["maximum_water_outlet_temperature_K_at_numerical_solver_nodes"]
@@ -188,8 +208,12 @@ def advance_hx_with_predictive_gas_bypass(
          (1.-selected)*gas_total_mass_flow_kg_s-gas_total_mass_flow_kg_s),
       "valve_slew_rate_limited":actuator_limited,
       "sampled_gas_fraction_to_duty_monotone":monotone,
-      "trial_q_at_min_fraction_W":values[0],
-      "trial_q_at_full_fraction_W":values[-1],
+      "trial_q_at_min_fraction_W":test(minimum)["water_outlet_flow_average_heat_W"],
+      "trial_q_at_full_fraction_W":test(1.)["water_outlet_flow_average_heat_W"],
+      "predictive_objective":settings.objective,
+      "requested_objective_value":target,
+      "selected_objective_value":objective_value(result),
+      "maximum_allowed_fraction_change_this_step":max_change,
       "interval_water_enthalpy_heating_W":achieved,
       "interval_mean_thermal_duty_error_W":deviation,
       "within_mean_heat_control_tolerance":bool(mean_on_target),
