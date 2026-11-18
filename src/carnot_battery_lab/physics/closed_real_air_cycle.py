@@ -227,7 +227,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=np.r_[np.full(n,1e-10),np.full(n,.001),
             np.full(nb+nh,1e-6),np.full(nh,.001),np.full(10,.001)],
-            max_step=c.max_step_s,dense_output=True)
+            max_step=c.max_step_s,first_step=min(1e-6,seconds),dense_output=True)
         if not sol.success:raise RuntimeError(sol.message)
         y=sol.y[:,-1];ds=y-y_start
         st,f,w,el,head,order=flows(y,charge)
