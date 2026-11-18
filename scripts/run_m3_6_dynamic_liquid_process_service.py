@@ -84,8 +84,12 @@ def study(*,with_mesh_time_check:bool=True):
             cases[name]=r
             rows.append({"name":name,"status":"MODEL_RUN_COMPLETE",
                          **compact(r)})
-        except (ValueError,RuntimeError) as exc:
-            if name!="10min_warmup_UA_40kW_K_low_liquid_pressure":
+        except ValueError as exc:
+            if (name!="10min_warmup_UA_40kW_K_low_liquid_pressure" or
+                not any(phrase in str(exc) for phrase in (
+                    "insufficient for 150C liquid","cannot keep 150C water liquid"))):
+                # Never misclassify an unrelated solver or programming failure
+                # as successful physical rejection by the water EOS gate.
                 raise
             cases[name]={
                "research_stage":"M3_6_FAIL_CLOSED_WATER_PHASE_OR_INLET",
