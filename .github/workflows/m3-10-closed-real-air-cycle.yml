@@ -33,7 +33,7 @@ jobs:
           import json
           from pathlib import Path
           x=json.loads(Path("results/m3_10_closed_real_air_cycle.json").read_text())
-          assert len(x["results"])==6
+          assert len(x["results"])==7
           assert not x["original_industrial_service_qualified"]
           assert x["Carnot_battery_RTE"] is None
           for item in x["results"].values():
@@ -50,6 +50,9 @@ jobs:
               assert v["charge"]["water_boundary_heat_J"]==0
               assert v["discharge"]["heater_electric_J"]==0
               assert v["discharge"]["water_boundary_heat_J"]>0
+              for phase in ("charge","discharge"):
+                  assert max(abs(q) for q in v[phase]["component_thermal_residuals_J"].values())<.2
+              assert v["remaining_solid_inventory_above_initial_J"]>0
           print("M3_10_CLOSED_MASS_CHARGE_DISCHARGE_FIRST_LAW_MODEL_ONLY")
           PY
       - uses: actions/upload-artifact@v4
