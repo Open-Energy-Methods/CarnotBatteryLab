@@ -94,7 +94,8 @@ def test_unknown_liquid_pressure_not_falsely_measured_after_success():
     assert p["assumed_hx_water_pressure_drop_Pa_uncalibrated"]>0.
     assert p["assumed_hx_gas_pressure_drop_Pa_uncalibrated"]>0.
     assert p["assumed_min_liquid_pressure_Pa"]<2e6
-    assert p["assumed_hx_liquid_pump_electric_W_uncalibrated"]>0. if "assumed_hx_liquid_pump_electric_W_uncalibrated" in p else p["assumed_liquid_hx_pump_electric_W_uncalibrated"]>0.
+    assert p["assumed_liquid_hx_pump_electric_W_uncalibrated"]>0.
+    assert p["assumed_gas_hx_circulator_electric_W_uncalibrated"]>0.
 
 def test_null_saturated_water_phase_not_hidden_by_gas_grade():
     a=_hx(assumed_liquid_inlet_absolute_pressure_Pa=4e5)
