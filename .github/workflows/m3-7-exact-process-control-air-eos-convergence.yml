@@ -60,6 +60,15 @@ jobs:
           assert not s["real_valve_or_industrial_heat_certified"]
           assert s["process_minutes_requested"]==60
           r=ctrl["model_result"]
+          hold=x["model_1MW_150C_control_after_declared_120s_full_flow_startup"]
+          assert hold["early_full_gas_startup_secs_explicitly_debited"]==120.
+          assert hold["summary"]["process_minutes_requested"]==60.
+          assert hold["summary"]["model_controlled_enthalpy_and_water_temperature_band_prefix_min"]>=0
+          assert hold["summary"]["model_controlled_enthalpy_and_water_temperature_band_prefix_min"]<=60
+          assert not hold["summary"]["real_valve_or_industrial_heat_certified"]
+          assert not hold["model_result"]["physical_energy_service_qualified"]
+          assert hold["model_result"]["whole_architecture_RTE"] is None
+          assert abs(hold["summary"]["model_bed_HX_cooler_first_law_residual_J"])<1000.
           assert not r["physical_energy_service_qualified"]
           assert not r["real_process_water_HX_qualified"]
           assert r["whole_architecture_RTE"] is None
