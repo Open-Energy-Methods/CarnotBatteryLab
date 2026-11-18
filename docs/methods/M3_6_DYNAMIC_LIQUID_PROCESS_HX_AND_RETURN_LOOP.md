@@ -58,6 +58,8 @@ dU_wall,i/dt = UA_g,i (T_g,i - T_wall,i)
                - UA_l,i (T_wall,i - T_l,i)
 ```
 
+The process-water grade gate checks **the minimum liquid outlet temperature across every accepted BDF solver node within each integration interval**, in addition to the requested 1 MW interval-average water enthalpy flow and the minimum gas–liquid approach at all accepted nodes. This is stronger than checking only first and last temperatures, but accepted solver nodes still cannot certify a **mathematically continuous minimum between nodes**. Heat delivery is still unqualified without real inlet histories, water pressure and installed process control.
+
 The code integrates four independent heat ledgers for **gas boundary heat**, **liquid outlet enthalpy rise**, **gas-to-wall** and **wall-to-liquid**. They produce three independently checked inventories and a whole-HX first-law residual:
 
 ```text
