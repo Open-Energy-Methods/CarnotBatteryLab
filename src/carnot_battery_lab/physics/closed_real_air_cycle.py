@@ -107,10 +107,11 @@ def run_closed_cycle(c:ClosedCycle):
     init=AirVolumeState.from_TP(1.,a.initial_gas_K,a.initial_gas_P_Pa)
     is_=2*n;iw=is_+nb;il=iw+nh;iz=il+nh
     # Cumulative ledgers: heater electricity, heat to gas, blower electric,
-    # blower gas work, cooler heat, water boundary heat, interface mass.
+    # blower gas work, cooler heat, water boundary heat, interface mass,
+    # and three separately integrated gas/solid/wall/water exchange terms.
     y0=np.r_[vol*init.mass_kg,vol*init.internal_energy_J,
         np.full(nb,a.initial_bed_solid_K),np.full(nh,a.initial_water_wall_K),
-        np.full(nh,h0),np.zeros(7)]
+        np.full(nh,h0),np.zeros(10)]
     air=AbstractState("HEOS","Air")
     kh=(a.hx_assumed_friction*a.hx_length_m/a.hx_hydraulic_diameter_m+
         a.hx_total_minor_K)/nh
@@ -168,30 +169,35 @@ def run_closed_cycle(c:ClosedCycle):
             d[is_:iw]=qgs/Cs
             d[iw:il]=(qgw-qwl)/Cw
             d[il:iz]=(mw*(np.r_[hl[1:],hi]-hl)+qwl)/Mw
-            d[iz:]=[eheat,qheat,el,w,qcool,mw*(hl[0]-hi),f[nb,0]]
+            d[iz:]=[eheat,qheat,el,w,qcool,mw*(hl[0]-hi),f[nb,0],
+                    sum(qgs),sum(qgw),sum(qwl)]
             return d
         return fun
     def stage(y_start,seconds,charge):
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=np.r_[np.full(n,1e-10),np.full(n,.001),
-            np.full(nb+nh,1e-6),np.full(nh,.001),np.full(7,.001)],
+            np.full(nb+nh,1e-6),np.full(nh,.001),np.full(10,.001)],
             max_step=c.max_step_s)
         if not sol.success:raise RuntimeError(sol.message)
         y=sol.y[:,-1];ds=y-y_start
         st,f,w,el,head=flows(y)
-        maxMach=0.;maxHeadRatio=0.
+        maxMach=0.;maxHeadRatio=0.;peak_pressure=0.;min_pressure=float('inf')
         for j in range(sol.t.size):
             states,faces,_,_,h=flows(sol.y[:,j])
             maxMach=max(maxMach,float(np.max(faces[:,2])))
             maxHeadRatio=max(maxHeadRatio,h/states[-1]["P"])
+            peak_pressure=max(peak_pressure,max(x['P'] for x in states))
+            min_pressure=min(min_pressure,min(x['P'] for x in states))
         if maxMach>.1 or maxHeadRatio>.02:
             raise ValueError("low-Mach or low-head scope exceeded")
         masses=float(sum(ds[:n]));Ug=float(sum(ds[n:2*n]))
         Us=Cs*float(sum(ds[is_:iw]));Uw=Cw*float(sum(ds[iw:il]));Hl=Mw*float(sum(ds[il:iz]))
-        Eheat,Qheat,Ebl,Wbl,Qcool,Qwater,Minterface=map(float,ds[iz:])
+        Eheat,Qheat,Ebl,Wbl,Qcool,Qwater,Minterface,Qgs,Qgw,Qwl=map(float,ds[iz:])
+        residuals={'gas':Ug-Qheat-Wbl+Qcool+Qgs+Qgw,
+                   'solid':Us-Qgs,'wall':Uw-Qgw+Qwl,'water':Hl-Qwl+Qwater}
         thermal_res=Ug+Us+Uw+Hl-Qheat-Wbl+Qcool+Qwater
         electrical_res=Ug+Us+Uw+Hl-Eheat-Ebl+Qcool+Qwater+(Eheat-Qheat)+(Ebl-Wbl)
-        if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl)):
+        if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl)):
             raise RuntimeError("closed loop first law violated")
         temps=_interp_checked(sol.y[il,:],H,grid)-273.15
         return y,dict(duration_s=seconds,gas_input_mass_kg=float(sum(y_start[:n])),
@@ -204,6 +210,11 @@ def run_closed_cycle(c:ClosedCycle):
             cooler_heat_to_assumed_sink_J=Qcool,water_boundary_heat_J=Qwater,
             thermal_first_law_residual_J=thermal_res,electrical_boundary_residual_J=electrical_res,
             final_water_outlet_C=float(temps[-1]),max_water_outlet_C=float(max(temps)),
+            min_water_outlet_C=float(min(temps)),
+            peak_gas_pressure_at_accepted_nodes_Pa=peak_pressure,
+            min_gas_pressure_at_accepted_nodes_Pa=min_pressure,
+            integrated_gas_to_solid_J=Qgs,integrated_gas_to_wall_J=Qgw,
+            integrated_wall_to_water_J=Qwl,component_thermal_residuals_J=residuals,
             final_solid_C=(y[is_:iw]-273.15).tolist(),
             final_gas_pressure_Pa=[q["P"] for q in st],
             final_gas_temperature_C=[q["T"]-273.15 for q in st],
@@ -219,6 +230,12 @@ def run_closed_cycle(c:ClosedCycle):
         "whole_sequence_electrical_boundary_residual_J":ch["electrical_boundary_residual_J"]+dis["electrical_boundary_residual_J"],
         "total_heater_and_blower_electric_J":ch["heater_electric_J"]+ch["blower_electric_J"]+dis["blower_electric_J"],
         "water_heat_not_qualified_process_service_J":dis["water_boundary_heat_J"],
+        "remaining_total_thermal_inventory_above_initial_J":sum(
+            ch[k]+dis[k] for k in ('gas_internal_energy_change_J','solid_energy_change_J',
+            'wall_energy_change_J','liquid_enthalpy_inventory_change_J')),
+        "remaining_solid_inventory_above_initial_J":ch['solid_energy_change_J']+dis['solid_energy_change_J'],
+        "all_discharge_accepted_water_nodes_ge_150C":dis['min_water_outlet_C']>=150.,
+        "water_temperature_150C_not_a_continuous_guarantee":True,
         "return_cooler_has_assumed_infinite_sink":True,
         "gas_flow_direction_same_during_charge_and_discharge":True,
         "water_flow_off_during_charge":True,
