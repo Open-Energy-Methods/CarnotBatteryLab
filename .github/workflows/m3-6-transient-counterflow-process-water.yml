@@ -1,0 +1,74 @@
+name: m3-6-transient-counterflow-process-water-and-gas-return
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/transient_liquid_hx.py'
+      - 'src/carnot_battery_lab/physics/coupled_transient_process_loop.py'
+      - 'scripts/run_m3_6_dynamic_liquid_process_service.py'
+      - 'tests/test_m3_6_transient_liquid_hx.py'
+      - 'docs/methods/M3_6_DYNAMIC_LIQUID_PROCESS_HX_AND_RETURN_LOOP.md'
+      - '.github/workflows/m3-6-transient-counterflow-process-water.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/transient_liquid_hx.py'
+      - 'src/carnot_battery_lab/physics/coupled_transient_process_loop.py'
+      - 'scripts/run_m3_6_dynamic_liquid_process_service.py'
+      - 'tests/test_m3_6_transient_liquid_hx.py'
+      - 'docs/methods/M3_6_DYNAMIC_LIQUID_PROCESS_HX_AND_RETURN_LOOP.md'
+      - '.github/workflows/m3-6-transient-counterflow-process-water.yml'
+  workflow_dispatch:
+
+jobs:
+  water-enthalpy-dynamic-hx-and-return-gas-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install thermodynamics and scientific tests
+        run: python -m pip install -e ".[physics,test]"
+      - name: Execute real CoolProp three-phase energy and negative hardware acceptance tests
+        run: python -m pytest tests/test_m3_6_transient_liquid_hx.py tests/test_m3_4_liquid_process_hx_gate.py -v
+      - name: Regenerate full cold-start versus warmup, heat-transfer UA and saturation scenarios
+        run: |
+          python scripts/run_m3_6_dynamic_liquid_process_service.py \
+            --output results/m3_6_dynamic_110_150C_water_HX_study.json
+      - name: Fail closed on missing installed equipment, unverified water pressure, or invalid EOS
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          x=json.loads(Path("results/m3_6_dynamic_110_150C_water_HX_study.json").read_text())
+          assert x["research_status"]=="M3_6_TRANSIENT_GAS_PROCESS_WATER_AND_HX_METAL"
+          assert len(x["cases"])==5
+          assert x["actual_1MW_qualified_case_count"]==0
+          assert x["entire_architecture_RTE"] is None
+          assert not x["actual_water_pressure_measured"]
+          assert not x["actual_process_HX_installed_and_rated"]
+          assert not x["actual_gas_cooling_equipment_available"]
+          assert x["cases"]["10min_warmup_UA_40kW_K_low_liquid_pressure"]["status"]=="BLOCKED_NONLIQUID_150C_WATER_AT_ASSUMED_PRESSURE"
+          for name,case in x["cases"].items():
+              if "coupled_discharge_HX_energy" not in case:continue
+              d=case["coupled_discharge_HX_energy"]
+              assert case["whole_architecture_RTE"] is None
+              assert not case["physical_energy_service_qualified"]
+              assert d["qualified_real_1MW_process_water_J"]==0.
+              assert not d["actual_installed_UA_and_water_pressure_known"]
+              assert math.isfinite(d["bed_HX_gas_cooler_system_first_law_residual_J"])
+              assert abs(d["bed_HX_gas_cooler_system_first_law_residual_J"])<1e-5*max(1.,abs(d["bed_integrated_heat_to_gas_J"]))
+              assert d["HX_max_single_step_phase_energy_error_J"]<1000.
+              assert len(case["sampled_thermocouple_like_model_trace_NOT_observations"])>=30
+          c=x["hx_discretization_and_timestep_sensitivity"]
+          assert c is not None and len(c["grid"])==4
+          assert c["absolute_mesh_and_timestep_independence_not_yet_proven"]
+          print("M3_6_HX_WATER_3FIELD_FIRST_LAW_AND_GAS_RETURN_LOOP_MODEL_ONLY_PASS")
+          PY
+      - name: Archive only hypothetical dynamic water HX and gas energy results
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-6-dynamic-water-HX-bed-and-uninstalled-gas-cooler-NOT-qualified
+          path: results/m3_6_dynamic_110_150C_water_HX_study.json
+          if-no-files-found: error
+          retention-days: 90
