@@ -11,7 +11,7 @@ pytest.importorskip("CoolProp")
 from carnot_battery_lab.physics.gas_rock_regenerator import GasRockBed
 from carnot_battery_lab.physics.transient_liquid_hx import (
     TransientHXAssumptions,HXDynamicState,advance_transient_hx,
-    eos_interpolation_check,
+    eos_interpolation_check,required_process_water_flow_from_real_enthalpy,
 )
 from carnot_battery_lab.physics.coupled_transient_process_loop import (
     CoupledHXTrial,simulate_coupled_transient_hx,
@@ -29,6 +29,17 @@ def _step(a=None,state=None,**kw):
            water_inlet_K=383.15,dt_s=60.)
     x.update(kw)
     return advance_transient_hx(a,state,**x)
+
+def test_original_one_megawatt_liquid_flow_is_derived_from_actual_water_h():
+    from CoolProp.CoolProp import PropsSI
+    result=required_process_water_flow_from_real_enthalpy()
+    hi=PropsSI("H","T",383.15,"P",2.e6,"HEOS::Water")
+    ho=PropsSI("H","T",423.15,"P",2.e6,"HEOS::Water")
+    m=result["original_1MW_real_water_required_flow_kg_s"]
+    assert 5.0<m<6.1
+    assert m*(ho-hi)==pytest.approx(1.e6,rel=1.e-5)
+    assert result["water_flow_derived_from_real_enthalpy_not_constant_cp"]
+    assert result["water_pressure_is_ASSUMED_not_measured"]
 
 def test_dynamic_x_fluid_states_and_energy_ledger_at_cold_start():
     a=_hx()
@@ -133,6 +144,9 @@ def test_coupled_cold_initial_hx_has_unqualified_first_process_minute():
     assert d["first_failed_total_step_index"]==1
     assert r["whole_architecture_RTE"] is None
     assert not r["real_process_water_HX_qualified"]
+    assert r["original_1MW_liquid_contract"][
+        "water_CoolProp_EOS_at_ASSUMED_pressure"][
+        "water_flow_derived_from_real_enthalpy_not_constant_cp"]
     assert r["charging"]["model_charging_heat_J"]>0
     assert abs(d["bed_HX_gas_cooler_system_first_law_residual_J"])<500.
     assert d["qualified_real_1MW_process_water_J"]==0.
