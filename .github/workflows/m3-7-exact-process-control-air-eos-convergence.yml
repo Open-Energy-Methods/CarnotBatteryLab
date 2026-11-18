@@ -1,0 +1,98 @@
+name: m3-7-exact-process-control-air-eos-convergence
+
+on:
+  push:
+    paths:
+      - 'README.md'
+      - 'src/carnot_battery_lab/physics/process_gas_bypass_control.py'
+      - 'src/carnot_battery_lab/physics/air_eos_sensitivity.py'
+      - 'src/carnot_battery_lab/physics/transient_liquid_hx.py'
+      - 'src/carnot_battery_lab/physics/coupled_transient_process_loop.py'
+      - 'scripts/run_m3_7_control_and_eos_audit.py'
+      - 'tests/test_m3_7_bypass_and_air_eos.py'
+      - 'docs/methods/M3_7_BYPASS_GAS_EOS_CONVERGENCE.md'
+      - '.github/workflows/m3-7-exact-process-control-air-eos-convergence.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'src/carnot_battery_lab/physics/process_gas_bypass_control.py'
+      - 'src/carnot_battery_lab/physics/air_eos_sensitivity.py'
+      - 'src/carnot_battery_lab/physics/transient_liquid_hx.py'
+      - 'src/carnot_battery_lab/physics/coupled_transient_process_loop.py'
+      - 'scripts/run_m3_7_control_and_eos_audit.py'
+      - 'tests/test_m3_7_bypass_and_air_eos.py'
+      - 'docs/methods/M3_7_BYPASS_GAS_EOS_CONVERGENCE.md'
+      - '.github/workflows/m3-7-exact-process-control-air-eos-convergence.yml'
+  workflow_dispatch:
+
+jobs:
+  independent-fluid-control-and-numerics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install numerical EOS and test dependencies
+        run: python -m pip install -e ".[physics,test]"
+      - name: Test mass-conserving controller and no false 150C process certification
+        run: |
+          python -m pytest tests/test_m3_7_bypass_and_air_eos.py \
+            tests/test_m3_6_transient_liquid_hx.py -v
+      - name: Run coupled 1 hour controlled water, dry-air EOS sensitivity and bed/HX convergence
+        run: |
+          python scripts/run_m3_7_control_and_eos_audit.py \
+            --output results/m3_7_bypass_control_air_EOS_and_convergence.json
+      - name: Reject fabricated plant, EOS bed or empirical validation assertions
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          x=json.loads(Path("results/m3_7_bypass_control_air_EOS_and_convergence.json").read_text())
+          assert x["research_stage"]=="M3_7_CONTROL_EOS_DIAGNOSTIC_AND_CONVERGENCE"
+          assert x["original_thermal_contract"]=="1MW_exact_enthalpy_water_110_to_150C"
+          assert not x["real_control_hardware_and_valve_ratings_known"]
+          assert not x["actual_installed_water_HX_UA_known"]
+          assert not x["actual_gas_pressure_known"]
+          assert x["validated_process_liquid_delivery_J"]==0
+          assert x["Carnot_battery_RTE"] is None
+          ctrl=x["model_1MW_150C_process_control"]
+          s=ctrl["summary"]
+          assert not s["real_valve_or_industrial_heat_certified"]
+          assert s["process_minutes_requested"]==60
+          r=ctrl["model_result"]
+          hold=x["model_1MW_150C_control_after_declared_120s_full_flow_startup"]
+          assert hold["early_full_gas_startup_secs_explicitly_debited"]==120.
+          assert hold["summary"]["process_minutes_requested"]==60.
+          assert hold["summary"]["model_controlled_enthalpy_and_water_temperature_band_prefix_min"]>=0
+          assert hold["summary"]["model_controlled_enthalpy_and_water_temperature_band_prefix_min"]<=60
+          assert not hold["summary"]["real_valve_or_industrial_heat_certified"]
+          assert not hold["model_result"]["physical_energy_service_qualified"]
+          assert hold["model_result"]["whole_architecture_RTE"] is None
+          assert abs(hold["summary"]["model_bed_HX_cooler_first_law_residual_J"])<1000.
+          assert not r["physical_energy_service_qualified"]
+          assert not r["real_process_water_HX_qualified"]
+          assert r["whole_architecture_RTE"] is None
+          assert abs(s["model_bed_HX_cooler_first_law_residual_J"])<1000.
+          for row in r["sampled_thermocouple_like_model_trace_NOT_observations"]:
+              c=row["assumed_model_predictive_gas_bypass_control"]
+              assert c is not None and abs(c["mass_balance_residual_kg_s"])<1e-9
+              assert not c["real_valve_qualified"]
+          gas=x["gas_thermophysical_EOS_variation_NOT_coupled"]
+          assert not gas["variable_density_or_cp_implemented_in_Carnot_bed"]
+          assert not gas["variable_density_or_cp_implemented_in_coupled_HX"]
+          assert len(gas["pressure_scenarios"])==3
+          convergence=x["numerical_mesh_coupling_and_time_sensitivity"]
+          assert len(convergence["numerical_results_same_physical_hypothesis"])==7
+          assert convergence["numerical_design_threshold_and_mesh_robustness_not_established"]
+          assert x["original_source_download_and_thermocouple_validation_NOT_done"]
+          print("M3_7_1MW_HYPOTHETICAL_CONTROL_GAS_EOS_NUMERICS_NO_PLANT_CLAIM")
+          PY
+      - name: Archive model-only EOS and controller research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m3-7-uninstalled-gas-bypass-variable-air-EOS-only-diagnostics-NOT-validated
+          path: results/m3_7_bypass_control_air_EOS_and_convergence.json
+          if-no-files-found: error
+          retention-days: 90
