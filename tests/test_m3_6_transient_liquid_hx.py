@@ -51,6 +51,8 @@ def test_dynamic_x_fluid_states_and_energy_ledger_at_cold_start():
     assert s["liquid_outlet_lower_than_required_at_start"]
     assert s["model_nominal_water_supply_and_1MW_in_step"] is False
     assert s["water_outlet_end_K"]>s["water_outlet_start_K"]
+    assert s["minimum_water_outlet_temperature_K_at_numerical_solver_nodes"]<=s["water_outlet_start_K"]+1.e-6
+    assert s["minimum_water_outlet_temperature_K_at_numerical_solver_nodes"]<=s["water_outlet_end_K"]+1.e-6
     assert s["net_boundary_gas_heat_into_HX_J"]>0.
     assert s["net_boundary_liquid_heat_from_HX_J"]>0.
     assert s["gas_holdup_change_J"]>0.
