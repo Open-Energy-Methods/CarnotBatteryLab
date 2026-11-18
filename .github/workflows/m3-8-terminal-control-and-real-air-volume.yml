@@ -1,11 +1,24 @@
 name: m3-8-terminal-control-and-real-air-volume
 on:
   push:
-    branches: [main, feat/m3-8-terminal-control-and-compressible-cell]
+    paths:
+      - 'src/carnot_battery_lab/physics/process_gas_bypass_control.py'
+      - 'src/carnot_battery_lab/physics/real_air_control_volume.py'
+      - 'src/carnot_battery_lab/physics/real_air_bed_prototype.py'
+      - 'scripts/run_m3_8_terminal_control_and_air_volume.py'
+      - 'tests/test_m3_8_terminal_and_real_air.py'
+      - 'tests/test_m3_8_real_air_bed_prototype.py'
+      - 'docs/methods/M3_8_TERMINAL_CONTROL_REAL_AIR_PROTOTYPE.md'
+      - 'README.md'
+      - '.github/workflows/m3-8-terminal-control-and-real-air-volume.yml'
   pull_request:
     paths:
       - 'src/carnot_battery_lab/physics/process_gas_bypass_control.py'
       - 'src/carnot_battery_lab/physics/real_air_control_volume.py'
+      - 'src/carnot_battery_lab/physics/real_air_bed_prototype.py'
+      - 'tests/test_m3_8_real_air_bed_prototype.py'
+      - 'docs/methods/M3_8_TERMINAL_CONTROL_REAL_AIR_PROTOTYPE.md'
+      - 'README.md'
       - 'scripts/run_m3_8_terminal_control_and_air_volume.py'
       - 'tests/test_m3_8_terminal_and_real_air.py'
       - '.github/workflows/m3-8-terminal-control-and-real-air-volume.yml'
@@ -20,7 +33,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -e ".[physics,test]"
-      - run: python -m pytest tests/test_m3_8_terminal_and_real_air.py tests/test_m3_7_bypass_and_air_eos.py tests/test_m3_6_transient_liquid_hx.py -q
+      - run: python -m pytest tests/test_m3_8_terminal_and_real_air.py tests/test_m3_8_real_air_bed_prototype.py tests/test_m3_7_bypass_and_air_eos.py tests/test_m3_6_transient_liquid_hx.py -q
       - run: python scripts/run_m3_8_terminal_control_and_air_volume.py
       - name: Verify unchanged service and explicit experimental blockers
         run: |
@@ -40,6 +53,15 @@ jobs:
               assert 0<=s["consecutive_passing_service_minutes"]<=60
               assert s["max_abs_valve_mass_residual_kg_s"]<1e-9
               assert abs(s["combined_first_law_residual_J"])<5000
+          prototypes=r["standalone_pressure_driven_real_air_bed_prototypes"]
+          assert set(prototypes)=={"2","4","8"}
+          for item in prototypes.values():
+              v=item["result"]
+              assert abs(v["mass_first_law_residual_kg"])<1e-6
+              assert abs(v["energy_first_law_residual_J"])<1.
+              assert v["variable_air_enthalpy_density_and_viscosity_used"]
+              assert not v["coupled_HX_and_closed_loop_qualified"]
+              assert not v["experimentally_validated"]
           for v in r["real_air_control_volume_tests"].values():
               assert abs(v["mass_balance_residual_kg"])<1e-8
               assert abs(v["energy_balance_residual_J"])<.1
