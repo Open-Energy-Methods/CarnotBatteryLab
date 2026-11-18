@@ -123,6 +123,10 @@ def study(*,rapid=False):
         transient_step_s=60.)
     controlled=simulate_coupled_transient_hx(
         bed,baseline,hx,gas_bypass_controller=control)
+    startup_variant=replace(control,startup_full_flow_seconds=120.)
+    controlled_startup=simulate_coupled_transient_hx(
+        bed,replace(baseline,name="controlled_with_120s_full_gas_startup"),
+        hx,gas_bypass_controller=startup_variant)
     result={
       "research_stage":"M3_7_CONTROL_EOS_DIAGNOSTIC_AND_CONVERGENCE",
       "original_thermal_contract":"1MW_exact_enthalpy_water_110_to_150C",
@@ -133,6 +137,11 @@ def study(*,rapid=False):
       "model_1MW_150C_process_control":{
         "model_result":controlled,
         "summary":_summarize_case(controlled),
+      },
+      "model_1MW_150C_control_after_declared_120s_full_flow_startup":{
+        "model_result":controlled_startup,
+        "summary":_summarize_case(controlled_startup),
+        "early_full_gas_startup_secs_explicitly_debited":120.,
       },
       "gas_thermophysical_EOS_variation_NOT_coupled":
           air_gas_loop_property_sensitivity(bed),
@@ -167,6 +176,8 @@ def main():
     a.output.write_text(json.dumps(x,indent=2,sort_keys=True)+"\n")
     print("M3_7_IDEAL_GAS_BYPASS_CONTROL",
           x["model_1MW_150C_process_control"]["summary"])
+    print("M3_7_CONTROL_WITH_INITIAL_120S_FULL_GAS_STARTUP",
+          x["model_1MW_150C_control_after_declared_120s_full_flow_startup"]["summary"])
     rr=x["model_1MW_150C_process_control"]["model_result"][
         "sampled_thermocouple_like_model_trace_NOT_observations"]
     for phase in ("warmup","process"):
