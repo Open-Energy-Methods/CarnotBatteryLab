@@ -3,6 +3,7 @@ name: m3-7-exact-process-control-air-eos-convergence
 on:
   push:
     paths:
+      - 'README.md'
       - 'src/carnot_battery_lab/physics/process_gas_bypass_control.py'
       - 'src/carnot_battery_lab/physics/air_eos_sensitivity.py'
       - 'src/carnot_battery_lab/physics/transient_liquid_hx.py'
@@ -13,6 +14,7 @@ on:
       - '.github/workflows/m3-7-exact-process-control-air-eos-convergence.yml'
   pull_request:
     paths:
+      - 'README.md'
       - 'src/carnot_battery_lab/physics/process_gas_bypass_control.py'
       - 'src/carnot_battery_lab/physics/air_eos_sensitivity.py'
       - 'src/carnot_battery_lab/physics/transient_liquid_hx.py'
