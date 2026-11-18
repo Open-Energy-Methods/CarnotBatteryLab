@@ -12,6 +12,7 @@ from dataclasses import dataclass,asdict,field
 import math
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.optimize import brentq
 from .open_real_air_water_train import OpenAirWaterTrain,hx_darcy_face
 from .real_air_bed_prototype import ergun_face
 from .real_air_control_volume import AirVolumeState
@@ -59,7 +60,7 @@ class ClosedCycle:
             raise ValueError("prototype duration outside supported study")
 
 
-def blower_flow(suction,bed,g,dx,c):
+def blower_flow(suction,bed,g,dx,c,*,valve_loss_K=0.):
     """Solve positive branch of assumed head curve minus bed half loss.
 
     Head = H0*(1-(m/m0)^2); discharge pressure = suction pressure + head.
@@ -71,6 +72,7 @@ def blower_flow(suction,bed,g,dx,c):
     A=150*suction["mu"]*(1-e)**2*(dx/2)/(e**3*d*d)/(rho*area)
     B=1.75*rho*(1-e)*(dx/2)/(e**3*d)/(rho*area)**2
     H0=c.blower_shutoff_head_Pa
+    B+=valve_loss_K/(2*rho*c.return_area_m2**2)
     K=H0/c.blower_assumed_zero_head_flow_kg_s**2
     drive=suction["P"]+H0-bed["P"]
     if drive<=0:return 0.,0.,0.,0.
@@ -87,7 +89,51 @@ def blower_flow(suction,bed,g,dx,c):
     return m,shaft,electric,head
 
 
-def run_closed_cycle(c:ClosedCycle):
+def gas_route(nb,nh,reverse):
+    """Physical indices in flow order; HX and return never reverse."""
+    bed=list(range(nb))
+    if reverse:bed.reverse()
+    return np.array(bed+list(range(nb,nb+nh+1)),dtype=int)
+
+
+def qualified_water_heat(t,solution,outlet_index,ledger_index,threshold_h):
+    """Integrate the existing signed boundary ledger only above grade.
+
+    Root detection is bracketed by accepted solver nodes; an excursion
+    entirely between nodes is not certified. Step refinement is required.
+    """
+    t=np.asarray(t)
+    if len(t)<2 or np.any(np.diff(t)<=0):
+        raise ValueError("need increasing accepted times")
+    def margin(z):return float(solution(z)[outlet_index]-threshold_h)
+    def ledger(z):return float(solution(z)[ledger_index])
+    margins=[margin(z) for z in t]
+    seconds=heat=0.
+    # Work per accepted step so an unresolved local excursion cannot
+    # incorrectly classify a much larger region spanning many steps.
+    for left,right,fl,fr in zip(t[:-1],t[1:],margins[:-1],margins[1:]):
+        cuts=[left,right]
+        if fl*fr<0:cuts.insert(1,brentq(margin,left,right))
+        for l,r in zip(cuts[:-1],cuts[1:]):
+            if margin((l+r)/2)>=0:
+                seconds+=r-l
+                heat+=ledger(r)-ledger(l)
+    return float(seconds),float(heat)
+
+
+def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1):
+    """Backward-compatible M3.10 baseline, with optional M3.11 routing.
+
+    Valve K is an assumed loss per active bed port, identical in each
+    direction. Instant switching is idealised; no valve motion/dead volume.
+    Legacy top-level charge/discharge and balances refer to cycle one.
+    """
+    if not isinstance(reverse_discharge,bool):
+        raise ValueError("reverse_discharge must be boolean")
+    if isinstance(valve_loss_K,bool) or not math.isfinite(valve_loss_K) or valve_loss_K<0:
+        raise ValueError("invalid valve loss")
+    if isinstance(cycles,bool) or not isinstance(cycles,int) or not 1<=cycles<=10:
+        raise ValueError("cycle count must be 1..10")
     from CoolProp import AbstractState
     from CoolProp.CoolProp import DmassUmass_INPUTS
     a=c.train;nb=a.bed_cells;nh=a.hx_cells;n=nb+nh+1
@@ -104,6 +150,8 @@ def run_closed_cycle(c:ClosedCycle):
     grid,H,_,_,sat=_water_table(a.water_pressure_assumed_Pa)
     hi=float(_interp_checked(a.water_inlet_K,grid,H))
     h0=float(_interp_checked(a.initial_water_wall_K,grid,H))
+    threshold_h=float(_interp_checked(423.15,grid,H))
+    if hi>=threshold_h:raise ValueError('150 C qualification requires colder inlet')
     init=AirVolumeState.from_TP(1.,a.initial_gas_K,a.initial_gas_P_Pa)
     is_=2*n;iw=is_+nb;il=iw+nh;iz=il+nh
     # Cumulative ledgers: heater electricity, heat to gas, blower electric,
@@ -132,26 +180,27 @@ def run_closed_cycle(c:ClosedCycle):
         e=g.porosity;d=g.particle_diameter_m;rho=up["rho"]
         ra=g.cross_section_m2*rho;rb=a.hx_gas_flow_area_m2*rho
         A=150*up["mu"]*(1-e)**2*(dx/2)/(e**3*d*d)/ra
-        B=1.75*rho*(1-e)*(dx/2)/(e**3*d)/ra**2+.25*kh*rho/rb**2
+        B=1.75*rho*(1-e)*(dx/2)/(e**3*d)/ra**2+.25*kh*rho/rb**2+valve_loss_K/(2*rho*c.return_area_m2**2)
         z=2*abs(dp)/(A+math.sqrt(A*A+4*B*abs(dp)))
         m=math.copysign(z,dp)
         return m,m*up["h"],max(z/(ra*e),z/rb)/up["a"]
-    def flows(y):
+    def flows(y,charge):
         st=[decode(i,y) for i in range(n)]
-        m,w,el,head=blower_flow(st[-1],st[0],g,dx,c)
+        order=gas_route(nb,nh,reverse_discharge and not charge)
+        m,w,el,head=blower_flow(st[-1],st[order[0]],g,dx,c,valve_loss_K=valve_loss_K)
         # Faces indexed by receiving cell. Blower adds work only at
         # discharge, not to the suction enthalpy flux removed from return.
         f=[(m,m*st[-1]["h"],m/(st[-1]["rho"]*g.cross_section_m2*g.porosity*st[-1]["a"]))]
         for i in range(1,n):
-            l,r=st[i-1:i+1]
+            l,r=st[order[i-1]],st[order[i]]
             if i<nb:f.append(ergun_face(l,r,g,dx))
             elif i==nb:f.append(mixed_face(l,r))
             elif i<n-1:f.append(hx_darcy_face(l,r,area=a.hx_gas_flow_area_m2,loss_coefficient=kh))
             else:f.append(hx_darcy_face(l,r,area=c.return_area_m2,loss_coefficient=kh/2+c.return_loss_K))
-        return st,np.asarray(f),w,el,head
+        return st,np.asarray(f),w,el,head,order
     def rhs(charge):
         def fun(_,y):
-            st,f,w,el,head=flows(y)
+            st,f,w,el,head,order=flows(y,charge)
             tg=np.array([x["T"] for x in st]);ts=y[is_:iw];tw=y[iw:il]
             hl=y[il:iz];tl=_interp_checked(hl,H,grid)
             qgs=Ua*(tg[:nb]-ts)
@@ -163,9 +212,10 @@ def run_closed_cycle(c:ClosedCycle):
             qheat=c.heater_efficiency*eheat
             qcool=0. if charge else c.cooler_UA_W_K*max(0.,tg[-1]-c.cooler_sink_K)
             d=np.zeros_like(y)
-            d[:n]=f[:,0]-np.roll(f[:,0],-1)
-            d[n:2*n]=f[:,1]-np.roll(f[:,1],-1)-np.r_[qgs,qgw,qcool-qheat]
-            d[n]+=w
+            d[order]=f[:,0]-np.roll(f[:,0],-1)
+            d[n+order]=f[:,1]-np.roll(f[:,1],-1)
+            d[n:2*n]-=np.r_[qgs,qgw,qcool-qheat]
+            d[n+order[0]]+=w
             d[is_:iw]=qgs/Cs
             d[iw:il]=(qgw-qwl)/Cw
             d[il:iz]=(mw*(np.r_[hl[1:],hi]-hl)+qwl)/Mw
@@ -177,13 +227,13 @@ def run_closed_cycle(c:ClosedCycle):
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=np.r_[np.full(n,1e-10),np.full(n,.001),
             np.full(nb+nh,1e-6),np.full(nh,.001),np.full(10,.001)],
-            max_step=c.max_step_s)
+            max_step=c.max_step_s,first_step=min(1e-6,seconds),dense_output=True)
         if not sol.success:raise RuntimeError(sol.message)
         y=sol.y[:,-1];ds=y-y_start
-        st,f,w,el,head=flows(y)
+        st,f,w,el,head,order=flows(y,charge)
         maxMach=0.;maxHeadRatio=0.;peak_pressure=0.;min_pressure=float('inf')
         for j in range(sol.t.size):
-            states,faces,_,_,h=flows(sol.y[:,j])
+            states,faces,_,_,h,_=flows(sol.y[:,j],charge)
             maxMach=max(maxMach,float(np.max(faces[:,2])))
             maxHeadRatio=max(maxHeadRatio,h/states[-1]["P"])
             peak_pressure=max(peak_pressure,max(x['P'] for x in states))
@@ -200,7 +250,12 @@ def run_closed_cycle(c:ClosedCycle):
         if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl)):
             raise RuntimeError("closed loop first law violated")
         temps=_interp_checked(sol.y[il,:],H,grid)-273.15
-        return y,dict(duration_s=seconds,gas_input_mass_kg=float(sum(y_start[:n])),
+        qualified_s,qualified_J=(0.,0.) if charge else qualified_water_heat(sol.t,sol.sol,il,iz+5,threshold_h)
+        return y,dict(duration_s=seconds,
+            bed_flow_order=order[:nb].tolist(),
+            water_grade_threshold_C=150.,qualified_water_duration_s=qualified_s,
+            qualified_water_heat_J=qualified_J,
+            signed_water_heat_outside_grade_J=Qwater-qualified_J,gas_input_mass_kg=float(sum(y_start[:n])),
             gas_final_mass_kg=float(sum(y[:n])),mass_residual_kg=masses,
             gas_internal_energy_change_J=Ug,solid_energy_change_J=Us,
             wall_energy_change_J=Uw,liquid_enthalpy_inventory_change_J=Hl,
@@ -221,8 +276,19 @@ def run_closed_cycle(c:ClosedCycle):
             final_blower_mass_flow_kg_s=float(f[0,0]),final_blower_head_Pa=head,
             cumulative_bed_HX_interface_mass_kg=Minterface,
             max_accepted_node_Mach=maxMach,max_blower_head_over_suction_pressure=maxHeadRatio)
-    y1,ch=stage(y0,c.charge_s,True)
-    y2,dis=stage(y1,c.discharge_s,False)
+    records=[]
+    current=y0
+    for k in range(cycles):
+        start=current
+        y1,ch_i=stage(start,c.charge_s,True)
+        current,di_i=stage(y1,c.discharge_s,False)
+        records.append(dict(cycle=k+1,charge=ch_i,discharge=di_i,
+            max_rock_cycle_end_change_K=float(np.max(np.abs(current[is_:iw]-start[is_:iw]))),
+            max_wall_cycle_end_change_K=float(np.max(np.abs(current[iw:il]-start[iw:il]))),
+            max_gas_cell_mass_cycle_end_change_kg=float(np.max(np.abs(current[:n]-start[:n]))),
+            max_gas_cell_internal_energy_cycle_end_change_J=float(np.max(np.abs(current[n:2*n]-start[n:2*n]))),
+            max_water_cell_enthalpy_cycle_end_change_J_kg=float(np.max(np.abs(current[il:iz]-start[il:iz])))))
+        if k==0:y2=current;ch=ch_i;dis=di_i
     return {"research_stage":"M3_10_CLOSED_REAL_AIR_THERMAL_SEQUENCE",
         "assumptions":asdict(c),"charge":ch,"discharge":dis,
         "charge_end_is_discharge_start":True,
@@ -237,7 +303,13 @@ def run_closed_cycle(c:ClosedCycle):
         "all_discharge_accepted_water_nodes_ge_150C":dis['min_water_outlet_C']>=150.,
         "water_temperature_150C_not_a_continuous_guarantee":True,
         "return_cooler_has_assumed_infinite_sink":True,
-        "gas_flow_direction_same_during_charge_and_discharge":True,
+        "gas_flow_direction_same_during_charge_and_discharge":not reverse_discharge,
+        "valve_loss_K_per_active_bed_port":valve_loss_K,
+        "instantaneous_ideal_valve_switch":True,
+        "cycle_records":records,"cycle_count":cycles,
+        "repeated_sequence_mass_residual_kg":float(sum(current[:n]-y0[:n])),
+        "repeated_sequence_electrical_residual_J":sum(p[phase]["electrical_boundary_residual_J"] for p in records for phase in ("charge","discharge")),
+        "grade_metric_is_not_matched_service":True,
         "water_flow_off_during_charge":True,
         "external_cooling_and_water_pump_electricity_excluded":True,
         "no_external_gas_mass_source_or_sink":True,
