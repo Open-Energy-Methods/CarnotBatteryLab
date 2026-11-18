@@ -200,6 +200,8 @@ def simulate_coupled_transient_hx(
           "HX_gas_outlet_time_average_C":gas_out_mean-273.15,
           "HX_water_outlet_start_C":h["water_outlet_start_K"]-273.15,
           "HX_water_outlet_end_C":h["water_outlet_end_K"]-273.15,
+          "HX_water_outlet_minimum_accepted_node_C":h[
+              "minimum_water_outlet_temperature_K_at_numerical_solver_nodes"]-273.15,
           "water_outlet_interval_mean_thermal_W":
               h["water_outlet_flow_average_heat_W"],
           "minimum_nodal_gas_minus_liquid_approach_K":
