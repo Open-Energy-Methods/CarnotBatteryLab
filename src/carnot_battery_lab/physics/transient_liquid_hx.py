@@ -126,6 +126,40 @@ def _interp_checked(T,grid,values):
     return np.interp(t,grid,values)
 
 
+def required_process_water_flow_from_real_enthalpy(*,
+    inlet_K:float=383.15,outlet_K:float=423.15,
+    duty_W:float=1.e6,pressure_Pa:float=2.e6)->dict:
+    """True nominal 1MW water mass flow at a *declared assumed* pressure.
+
+    M3.4 previously used fixed 4180 J/kg/K (=5.9809 kg/s). For M3.6,
+    that constant-cp simplification cannot simultaneously be imposed with
+    real-water h(T,P): the real specific enthalpy difference defines the
+    flow required for the exact original 1MW, 110->150C contract.
+    """
+    if any(not _pos(v) for v in (inlet_K,outlet_K,duty_W,pressure_Pa)
+           ) or outlet_K<=inlet_K:
+        raise ValueError("invalid exact liquid duty or process boundaries")
+    grid,H,_,_,sat=_water_table(pressure_Pa)
+    if outlet_K>=sat-2.:
+        raise ValueError("assumed process pressure cannot keep 150C water liquid")
+    hi=float(_interp_checked(inlet_K,grid,H))
+    ho=float(_interp_checked(outlet_K,grid,H))
+    flow=duty_W/(ho-hi)
+    if not _pos(flow):
+        raise ValueError("invalid real-water process flow")
+    return {
+        "target_heat_W":duty_W,
+        "water_inlet_K":inlet_K,
+        "water_outlet_K":outlet_K,
+        "assumed_absolute_water_pressure_Pa":pressure_Pa,
+        "CoolProp_water_inlet_h_J_kg":hi,
+        "CoolProp_water_outlet_h_J_kg":ho,
+        "original_1MW_real_water_required_flow_kg_s":flow,
+        "water_flow_derived_from_real_enthalpy_not_constant_cp":True,
+        "water_pressure_is_ASSUMED_not_measured":True,
+    }
+
+
 def _pressure_audit(
     a:TransientHXAssumptions,water_m_kg_s:float,gas_m_kg_s:float,
     gas_rho_kg_m3:float,water_rho_kg_m3:float,
