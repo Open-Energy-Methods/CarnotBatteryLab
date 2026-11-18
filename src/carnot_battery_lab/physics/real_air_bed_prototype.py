@@ -28,7 +28,7 @@ class RealAirBedAssumptions:
     assumed_volumetric_gas_solid_UA_W_m3K:float=5000.
     assumed_wall_UA_W_K:float=0.
     ambient_K:float=293.15
-    max_superficial_Mach:float=.1
+    max_interstitial_Mach:float=.1
     # Bound actual interstitial velocity below sonic regime by using u/epsilon
     # in the guard, not just superficial velocity.
     def __post_init__(self):
@@ -36,12 +36,12 @@ class RealAirBedAssumptions:
             raise ValueError("prototype requires 2..32 cells")
         for v in (self.solid_density_kg_m3,self.solid_cp_J_kgK,
                   self.assumed_volumetric_gas_solid_UA_W_m3K,
-                  self.ambient_K,self.max_superficial_Mach):
+                  self.ambient_K,self.max_interstitial_Mach):
             if not math.isfinite(v) or v<=0:
                 raise ValueError("invalid prototype coefficients")
         if not math.isfinite(self.assumed_wall_UA_W_K) or self.assumed_wall_UA_W_K<0:
             raise ValueError("invalid wall loss")
-        if self.max_superficial_Mach>.2:
+        if self.max_interstitial_Mach>.2:
             raise ValueError("quasi-steady Ergun prototype restricted to low Mach")
 
 
@@ -140,7 +140,7 @@ def run_real_air_bed(a:RealAirBedAssumptions,*,duration_s:float,
     # continuous sonic bound, and no actual plant hydraulic rating is known.
     max_mach=max(float(np.max(evaluate(sol.y[:,i])[1][:,2]))
                  for i in range(sol.y.shape[1]))
-    if max_mach>a.max_superficial_Mach:
+    if max_mach>a.max_interstitial_Mach:
         raise ValueError("interstitial Mach outside low-Mach model domain")
     cells,faces=evaluate(y)
     ml,mr,hl,hr,qwall=map(float,y[3*N:])
