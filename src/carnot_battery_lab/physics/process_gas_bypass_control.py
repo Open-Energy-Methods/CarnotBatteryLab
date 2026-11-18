@@ -26,6 +26,7 @@ class GasBypassControllerAssumptions:
     permitted_interval_mean_duty_error_W:float=1_500.
     permitted_nodal_water_outlet_error_K:float=.5
     maximum_bisection_steps:int=13
+    startup_full_flow_seconds:float=0.
 
     def __post_init__(self):
         props=(self.minimum_hx_gas_fraction,
@@ -42,6 +43,11 @@ class GasBypassControllerAssumptions:
             raise ValueError("actuator fraction slew > 1 in one interval")
         if not isinstance(self.maximum_bisection_steps,int) or not 2<=self.maximum_bisection_steps<=30:
             raise ValueError("invalid bisection budget")
+        if (isinstance(self.startup_full_flow_seconds,bool)
+            or not isinstance(self.startup_full_flow_seconds,(int,float))
+            or not isfinite(self.startup_full_flow_seconds)
+            or self.startup_full_flow_seconds<0):
+            raise ValueError("invalid nonnegative full-flow startup period")
 
 
 def advance_hx_with_predictive_gas_bypass(
@@ -52,6 +58,7 @@ def advance_hx_with_predictive_gas_bypass(
     water_mass_flow_kg_s:float,water_inlet_K:float,dt_s:float,
     previous_gas_through_fraction:float=1.,
     required_supply_K:float=423.15,
+    elapsed_discharge_time_s:float=0.,
 )->dict:
     if not (isfinite(previous_gas_through_fraction) and
             settings.minimum_hx_gas_fraction<=previous_gas_through_fraction<=1):
@@ -73,6 +80,44 @@ def advance_hx_with_predictive_gas_bypass(
                 **base,gas_flow_kg_s=gas_total_mass_flow_kg_s*fraction)
         return trials[k]
 
+    if not isinstance(elapsed_discharge_time_s,(int,float)) or (
+        not isfinite(elapsed_discharge_time_s) or elapsed_discharge_time_s<0):
+        raise ValueError("nonnegative elapsed discharge time required")
+    startup_hold=elapsed_discharge_time_s<settings.startup_full_flow_seconds
+    if startup_hold:
+        full=test(1.)
+        achieved=full["water_outlet_flow_average_heat_W"]
+        min_kelvin=full[
+            "minimum_water_outlet_temperature_K_at_numerical_solver_nodes"]
+        max_kelvin=full[
+            "maximum_water_outlet_temperature_K_at_numerical_solver_nodes"]
+        return {
+          "model_only_gas_bypass_control_status":
+              "STARTUP_FULL_HOT_GAS_FLOW_NO_PROCESS_CREDIT",
+          "hx_step":full,
+          "requested_through_hx_gas_fraction":1.,
+          "selected_through_hx_gas_fraction":1.,
+          "model_gas_bypass_fraction":0.,
+          "through_hx_gas_mass_flow_kg_s":gas_total_mass_flow_kg_s,
+          "bypassed_gas_mass_flow_kg_s":0.,
+          "gas_mass_balance_residual_kg_s":0.,
+          "valve_slew_rate_limited":False,
+          "sampled_gas_fraction_to_duty_monotone":None,
+          "trial_q_at_min_fraction_W":None,
+          "trial_q_at_full_fraction_W":achieved,
+          "interval_water_enthalpy_heating_W":achieved,
+          "interval_mean_thermal_duty_error_W":(
+              achieved-settings.interval_mean_duty_target_W),
+          "within_mean_heat_control_tolerance":False,
+          "min_accepted_node_water_outlet_C":min_kelvin-273.15,
+          "max_accepted_node_water_outlet_C":max_kelvin-273.15,
+          "all_accepted_nodes_within_hypothetical_water_setpoint_band":False,
+          "model_only_interval_nominal_150C_control_gate":False,
+          "number_of_ODE_trial_solves_including_monotonicity":1,
+          "real_valve_and_control_equipment_qualified":False,
+          "true_continuous_150C_control_certified":False,
+          "actual_1MW_process_water_delivered_qualified":False,
+        }
     minimum=settings.minimum_hx_gas_fraction
     # Monotonicity isn't a consequence of the finite-time three-inventory HX
     # model in every possible state. Independently sample the entire valve
