@@ -61,7 +61,10 @@ jobs:
               assert d["HX_max_single_step_phase_energy_error_J"]<1000.
               assert len(case["sampled_thermocouple_like_model_trace_NOT_observations"])>=30
           c=x["hx_discretization_and_timestep_sensitivity"]
-          assert c is not None and len(c["grid"])==4
+          assert c is not None and len(c["grid"])==6
+          assert c["N12_to_N16_last_water_outlet_abs_difference_K"]>=0
+          assert c["dt120_to_dt60_at_N12_last_water_outlet_abs_difference_K"]>=0
+          assert c["bed_grid_comparison"]["bedN16_to_bedN32_final_water_difference_K"]>=0
           assert c["absolute_mesh_and_timestep_independence_not_yet_proven"]
           print("M3_6_HX_WATER_3FIELD_FIRST_LAW_AND_GAS_RETURN_LOOP_MODEL_ONLY_PASS")
           PY
