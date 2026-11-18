@@ -52,6 +52,26 @@ def test_cold_start_gas_valve_cannot_immediately_claim_150C_water():
     assert out["trial_q_at_full_fraction_W"]>0
 
 
+def test_explicit_full_gas_startup_is_debited_and_never_certified():
+    hx=TransientHXAssumptions(cells=6)
+    flow=required_process_water_flow_from_real_enthalpy()[
+        "original_1MW_real_water_required_flow_kg_s"]
+    settings=GasBypassControllerAssumptions(startup_full_flow_seconds=120.)
+    out=advance_hx_with_predictive_gas_bypass(
+        settings,hx,HXDynamicState.initial(hx),
+        hot_gas_inlet_mean_K=493.15,gas_total_mass_flow_kg_s=15.,
+        gas_cp_J_kgK=1005.,gas_density_kg_m3=2.5,
+        water_mass_flow_kg_s=flow,water_inlet_K=383.15,
+        dt_s=60.,elapsed_discharge_time_s=0.)
+    assert out["model_only_gas_bypass_control_status"]==(
+        "STARTUP_FULL_HOT_GAS_FLOW_NO_PROCESS_CREDIT")
+    assert out["selected_through_hx_gas_fraction"]==1.
+    assert out["bypassed_gas_mass_flow_kg_s"]==0.
+    assert out["number_of_ODE_trial_solves_including_monotonicity"]==1
+    assert not out["model_only_interval_nominal_150C_control_gate"]
+    assert not out["actual_1MW_process_water_delivered_qualified"]
+
+
 def test_valve_fraction_sums_to_exact_original_gas_mass_flow():
     o=_step()
     f=o["selected_through_hx_gas_fraction"]
@@ -118,6 +138,7 @@ def test_gas_bypass_coupled_to_entire_bed_hx_cooler_conserves_energy():
     {"interval_mean_duty_target_W":-10.},
     {"permitted_nodal_water_outlet_error_K":float("nan")},
     {"maximum_bisection_steps":0},
+    {"startup_full_flow_seconds":-1.},
 ])
 def test_invalid_controller_settings_fail_closed(change):
     with pytest.raises(ValueError):GasBypassControllerAssumptions(**change)
