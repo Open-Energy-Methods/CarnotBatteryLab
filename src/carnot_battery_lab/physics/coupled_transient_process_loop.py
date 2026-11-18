@@ -168,7 +168,7 @@ def simulate_coupled_transient_hx(
         hx_gas_input_boundary+=h["net_boundary_gas_heat_into_HX_J"]
         hx_water_out+=h["net_boundary_liquid_heat_from_HX_J"]
         hx_pump_and_fan+=dt*(h["assumed_hx_pressure_pump_audit"][
-            "assumed_hx_gas_circulator_electric_W_uncalibrated"]+
+            "assumed_gas_hx_circulator_electric_W_uncalibrated"]+
             h["assumed_hx_pressure_pump_audit"][
             "assumed_liquid_hx_pump_electric_W_uncalibrated"])
         gas_holdup+=h["gas_holdup_change_J"]
