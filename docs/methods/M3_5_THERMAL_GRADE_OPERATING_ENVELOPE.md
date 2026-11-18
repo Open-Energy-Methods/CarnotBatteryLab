@@ -30,6 +30,10 @@
 
 The original machine-specific R600/R718 compressor operating limits from M1.9 **remain fully blocked**. M3.5 has *not* invented a compressor able to take 80°C waste heat to a 260°C gas supply. This is a deliberately different, independent gas-heater-and-TES hypothesis. It is not a candidate Carnot-battery architecture ranking.
 
+### Correlation provenance and nominal range checks
+
+The existing two-temperature bed employs the particle–gas heat-transfer correlation `Nu = 2 + 1.1 Re_p^0.6 Pr^(1/3)` from **Wakao, Kaguei & Funazkri (1979), [DOI 10.1016/0009-2509(79)85064-2](https://doi.org/10.1016/0009-2509(79)85064-2)**, originally associated with a reported **particle Reynolds range 15–8500** and gas-like Prandtl values near 0.7–1. The exact constant property assumptions used here imply `Pr≈0.716`, `Re_p≈2438` for 25 kg/s and `Re_p≈1463` for 15 kg/s in the 5 m diameter bed, all **nominally** inside that correlation range. The code refuses out-of-range Reynolds inputs. This is only a check of published correlation arguments, **not validation** of the assumed large-scale industrial 1D rock bed, particle shape, thermal dispersion, high-temperature air density, gas pressure or actual physical heat-transfer coefficients.
+
 ## 2. Conservation of energy and heater model
 
 Charging uses the original conservative finite-volume two-temperature bed model `advance_bed()`, whose fluid/rock/ambient integrated first-law residual is independently recomputed. The physical **gas recirculation heater** assumption is:
