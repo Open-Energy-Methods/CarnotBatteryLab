@@ -1,0 +1,53 @@
+name: m3-11-reverse-flow-recovery
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'tests/test_m3_11_reverse_flow_recovery.py'
+      - 'scripts/run_m3_11_reverse_flow_recovery.py'
+      - 'docs/methods/M3_11_REVERSE_FLOW_RECOVERY.md'
+      - '.github/workflows/m3-11-reverse-flow-recovery.yml'
+  workflow_dispatch:
+jobs:
+  model-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_10_closed_real_air_cycle.py tests/test_m3_11_reverse_flow_recovery.py -q
+      - run: python scripts/run_m3_11_reverse_flow_recovery.py
+      - name: Audit numerical invariants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("results/m3_11_reverse_flow_recovery.json").read_text())
+          assert len(x["results"])==8
+          assert abs(x["matched_cold_start_charge_heater_difference_J"])<.01
+          assert abs(x["matched_cold_start_charge_blower_difference_J"])<.01
+          assert not x["industrial_matched_service"] and x["Carnot_battery_RTE"] is None
+          for name,r in x["results"].items():
+              v=r["result"]
+              assert not v["verified_periodic_cycle"] and not v["experimental_validation"]
+              assert abs(v["repeated_sequence_mass_residual_kg"])<1e-8
+              assert abs(v["repeated_sequence_electrical_residual_J"])<.2
+              for p in v["cycle_records"]:
+                  ch,di=p["charge"],p["discharge"]
+                  assert 0<=di["qualified_water_duration_s"]<=di["duration_s"]
+                  assert di["qualified_water_heat_J"]>=-1e-6
+                  assert abs(di["qualified_water_heat_J"]+di["signed_water_heat_outside_grade_J"]-di["water_boundary_heat_J"])<1e-6
+                  assert ch["bed_flow_order"]==list(range(len(ch["bed_flow_order"])))
+                  assert di["bed_flow_order"]==(ch["bed_flow_order"][::-1] if name.startswith("reverse") else ch["bed_flow_order"])
+                  for z in (ch,di):
+                      assert max(abs(q) for q in z["component_thermal_residuals_J"].values())<.2
+          print("M3_11_CONSERVATION_AND_GRADE_LEDGER_MODEL_ONLY")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m3-11-reverse-flow-recovery-model-only
+          path: results/m3_11_reverse_flow_recovery.json
+          retention-days: 90
