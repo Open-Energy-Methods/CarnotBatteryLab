@@ -1,8 +1,9 @@
 """M3.11: routing, grade-ledger crossing and conservation regressions."""
 from dataclasses import replace
-import numpy as np
 import pytest
 pytest.importorskip("CoolProp")
+np=pytest.importorskip("numpy")
+pytest.importorskip("scipy")
 from carnot_battery_lab.physics.closed_real_air_cycle import (
     ClosedCycle,run_closed_cycle,gas_route,qualified_water_heat,blower_flow)
 from carnot_battery_lab.physics.real_air_bed_prototype import _tp_properties
