@@ -272,8 +272,14 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         y=sol.y[:,-1];ds=y-y_start
         st,f,w,el,head,order=flows(y,charge)
         maxMach=0.;maxHeadRatio=0.;peak_pressure=0.;min_pressure=float('inf')
+        peak_cooler=0.;peak_blower_electric=0.;peak_heater_electric=0.;peak_blower_flow=0.
         for j in range(sol.t.size):
-            states,faces,_,_,h,_=flows(sol.y[:,j],charge)
+            states,faces,_,power,h,_=flows(sol.y[:,j],charge)
+            ret=states[-1]['T']
+            peak_cooler=max(peak_cooler,0. if charge else c.cooler_UA_W_K*max(0.,ret-c.cooler_sink_K))
+            peak_heater_electric=max(peak_heater_electric,min(c.heater_max_electric_W,max(0.,c.heater_feedback_W_K*(c.heater_target_K-ret))) if charge else 0.)
+            peak_blower_electric=max(peak_blower_electric,power)
+            peak_blower_flow=max(peak_blower_flow,float(faces[0,0]))
             maxMach=max(maxMach,float(np.max(faces[:,2])))
             maxHeadRatio=max(maxHeadRatio,h/states[-1]["P"])
             peak_pressure=max(peak_pressure,max(x['P'] for x in states))
@@ -318,6 +324,11 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             process_duty_deficit_J=deficit,process_duty_excess_J=excess,
             simultaneous_target_duration_s=matched_s,simultaneous_target_heat_J=matched_J,
             final_hx_water_outlet_C=float(hx_temps[-1]),
+            min_hx_water_outlet_at_accepted_nodes_C=float(min(hx_temps)),
+            peak_cooler_at_accepted_nodes_W=peak_cooler,
+            peak_heater_electric_at_accepted_nodes_W=peak_heater_electric,
+            peak_blower_electric_at_accepted_nodes_W=peak_blower_electric,
+            peak_blower_flow_at_accepted_nodes_kg_s=peak_blower_flow,
             min_delivered_duty_W=min(x[3] for x in delivered),
             max_delivered_duty_W=max(x[3] for x in delivered),
             water_min_flow_at_nodes_kg_s=min(flows_water),
