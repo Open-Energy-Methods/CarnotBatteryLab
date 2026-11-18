@@ -17,6 +17,21 @@ The study freezes six cases: the M3.7 60 s mean-duty reference; terminal objecti
 
 Thermal feasibility of precise control is judged only from the regenerated report, not from an arbitrary controller success flag or final outlet temperature. An accepted numerical node check does not prove continuous service between solver nodes. This study uses perfect state knowledge of each energy-equivalent inlet gas step, no real sensor delay/error and no validated actuator. It is not a commissioned optimizer or closed-loop plant control certification.
 
+### Verified M3.8 outcome (PR #49)
+
+All three PR workflows completed successfully on a8d4ab0; [dedicated results](https://github.com/Open-Energy-Methods/CarnotBatteryLab/actions/runs/44393489259). Merged into main as 95f1e0a. Final simulated controls:
+
+| Objective / grid / update | Consecutive passing minutes | Max absolute interval-mean duty error, W | Min / max accepted water node, °C |
+|---|---:|---:|---:|
+| Mean duty 16/8, 60s | 48 | 19.50 | 149.0622 / 150.9327 |
+| Terminal 16/8, 60s | 60 | 605.20 | 149.9589 / 150.0016 |
+| Terminal 16/8, 30s | 60 | 139.32 | 149.9904 / 150.0011 |
+| Terminal 16/8, 10s | 60 | 8.13 | 149.9994 / 150.0004 |
+| Terminal 32/12, 30s | 60 | 151.36 | 149.9898 / 150.0010 |
+| Terminal 16/8, 30s, four-hour charge | 60 | 143.09 | 149.9904 / 150.0011 |
+
+All are conditional model results with a hypothetical heater, ideal predictor, constant-property industrial gas model, and no actual actuator/sensor qualification. Refined mesh result and small control errors do not establish experimental accuracy. The 10 s case still requires ~2.408 GJ additional thermal gas conditioning over 70 min, uninstalled. Independent real-air bed N=2/4/8 outlet gas temperatures at 10 s were 396.699, 391.352, 388.660 K respectively; 4→8 shift 2.692 K remains material and no mesh independence is established. Both real-air mass and energy ledgers closed at numerical roundoff.
+
 ## B. EOS-conservative variable-property gas physics (separate prototype)
 
 The original constant-density gas in M3.7 cannot simply be replaced by density evaluated at fixed pressure and variable temperature without accounting for gas inventory. M3.8 first implements a rigid gas control volume whose independently advanced extensive quantities are gas mass M and internal energy U:
