@@ -167,6 +167,28 @@ def main():
     a.output.write_text(json.dumps(x,indent=2,sort_keys=True)+"\n")
     print("M3_7_IDEAL_GAS_BYPASS_CONTROL",
           x["model_1MW_150C_process_control"]["summary"])
+    rr=x["model_1MW_150C_process_control"]["model_result"][
+        "sampled_thermocouple_like_model_trace_NOT_observations"]
+    for phase in ("warmup","process"):
+        selected=[q for q in rr if q["warmup_not_counted_for_process"]==
+                  (phase=="warmup")]
+        for idx in sorted(set([0,1,2,len(selected)//2,len(selected)-2,len(selected)-1])):
+            if 0<=idx<len(selected):
+                item=selected[idx]
+                print("M3_7_CONTROLLER_TRAJECTORY",phase,idx,{
+                    "time_end_s":item["time_end_s"],
+                    "water_end_C":item["HX_water_outlet_end_C"],
+                    "water_interval_mean_W":item["water_outlet_interval_mean_thermal_W"],
+                    "control":item["assumed_model_predictive_gas_bypass_control"]})
+    states=x["gas_thermophysical_EOS_variation_NOT_coupled"][
+        "pressure_scenarios"][1]["pointwise_states"]
+    print("M3_7_AIR_EOS_REFERENCE_250KPA",
+          {temp:{
+            key:states[temp][key] for key in (
+              "cp_J_kgK","density_kg_m3",
+              "eos_air_enthalpy_rise_above_110C_J_kg",
+              "original_constant_cp_enthalpy_rise_above_110C_J_kg")}
+            for temp in ("110.0","220.0","260.0")})
     print("M3_7_INDEPENDENT_BED_HX_MESH_DIAGNOSTIC",
           x["numerical_mesh_coupling_and_time_sensitivity"][
              "separate_finite_volume_sensitivity_deltas"])
