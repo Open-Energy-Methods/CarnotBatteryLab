@@ -52,13 +52,16 @@ def aggregate(root):
         v[key]=s
     if set(v)!=set(CASES):raise ValueError("incomplete campaign")
     pairs={str(q):compare_pair(v[f"q{q}_n12"],v[f"q{q}_n16"]) for q in (500,1000,1250)}
-    passing=[int(q) for q,p in pairs.items() if p["screening_pass"]]
     a,b=v["q1000_n12"],v["q1000_n12_halfstep"]
     temporal=dict(electric_relative_difference=abs(a["electric_J"]-b["electric_J"])/b["electric_J"],
                   raw_margin_difference_K=abs(a["raw_margin_K"]-b["raw_margin_K"]),
                   same_full_gate=a["full"]==b["full"],both_periodic=a["periodic"] and b["periodic"])
+    temporal["screening_pass"]=bool(a["full"] and b["full"] and temporal["both_periodic"]
+        and temporal["electric_relative_difference"]<=.02 and temporal["raw_margin_difference_K"]<=1.
+        and b["raw_margin_K"]>=0)
+    passing=[int(q) for q,p in pairs.items() if p["screening_pass"] and (q!="1000" or temporal["screening_pass"])]
     result=dict(cases=v,pairs=pairs,highest_discrete_two_grid_screened_W=max(passing) if passing else None,
-                temporal_diagnostic_1000W=temporal,
+                temporal_diagnostic_1000W=temporal,temporal_screening_other_duties_performed=False,
                 scale=size_candidate(v[f"q{max(passing)}_n16"]) if passing else None,
                 hardware_qualified=False,industrial_service_qualified=False,asymptotic_grid_convergence_established=False)
     print(json.dumps(result),flush=True)
