@@ -1,0 +1,62 @@
+name: m3-10-closed-real-air-cycle
+on:
+  push:
+    paths:
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'tests/test_m3_10_closed_real_air_cycle.py'
+      - 'scripts/run_m3_10_closed_real_air_cycle.py'
+      - 'docs/methods/M3_10_CLOSED_REAL_AIR_CYCLE.md'
+      - '.github/workflows/m3-10-closed-real-air-cycle.yml'
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'tests/test_m3_10_closed_real_air_cycle.py'
+      - 'scripts/run_m3_10_closed_real_air_cycle.py'
+      - 'docs/methods/M3_10_CLOSED_REAL_AIR_CYCLE.md'
+      - '.github/workflows/m3-10-closed-real-air-cycle.yml'
+  workflow_dispatch:
+jobs:
+  closed-mass-and-electric-energy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_10_closed_real_air_cycle.py tests/test_m3_9_open_real_air_water_train.py -q
+      - run: python scripts/run_m3_10_closed_real_air_cycle.py
+      - name: Verify closed inventory and reject industrial qualification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path("results/m3_10_closed_real_air_cycle.json").read_text())
+          assert len(x["results"])==7
+          assert not x["original_industrial_service_qualified"]
+          assert x["Carnot_battery_RTE"] is None
+          for item in x["results"].values():
+              v=item["result"]
+              assert v["closed_gas_circulation_modeled"]
+              assert v["charge_end_is_discharge_start"]
+              assert abs(v["whole_cycle_gas_mass_residual_kg"])<1e-8
+              assert abs(v["whole_sequence_electrical_boundary_residual_J"])<.2
+              assert not v["verified_periodic_cycle"]
+              assert not v["hardware_qualified"]
+              assert not v["experimental_validation"]
+              assert v["external_cooling_and_water_pump_electricity_excluded"]
+              assert v["charge"]["heater_electric_J"]>0
+              assert v["charge"]["water_boundary_heat_J"]==0
+              assert v["discharge"]["heater_electric_J"]==0
+              assert v["discharge"]["water_boundary_heat_J"]>0
+              for phase in ("charge","discharge"):
+                  assert max(abs(q) for q in v[phase]["component_thermal_residuals_J"].values())<.2
+              assert v["remaining_solid_inventory_above_initial_J"]>0
+          print("M3_10_CLOSED_MASS_CHARGE_DISCHARGE_FIRST_LAW_MODEL_ONLY")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m3-10-closed-gas-sequence-model-only
+          path: results/m3_10_closed_real_air_cycle.json
+          retention-days: 90
