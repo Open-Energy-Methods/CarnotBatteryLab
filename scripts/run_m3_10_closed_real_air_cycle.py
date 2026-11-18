@@ -13,6 +13,7 @@ def study():
         "smaller_blower_head":replace(base,blower_shutoff_head_Pa=300.),
         "lower_cooler_UA":replace(base,cooler_UA_W_K=30.),
         "shorter_charge":replace(base,charge_s=600.),
+        "half_max_step":replace(base,max_step_s=2.5),
     }
     out={}
     for name,c in cases.items():
@@ -25,7 +26,12 @@ def study():
             "discharge_cooler_heat_kWh":di["cooler_heat_to_assumed_sink_J"]/3.6e6,
             "total_blower_electric_Wh":(ch["blower_electric_J"]+di["blower_electric_J"])/3600.,
             "final_discharge_water_C":di["final_water_outlet_C"],
-            "max_gas_pressure_Pa":max(ch["final_gas_pressure_Pa"]+di["final_gas_pressure_Pa"]),
+            "peak_gas_pressure_accepted_nodes_Pa":max(ch["peak_gas_pressure_at_accepted_nodes_Pa"],di["peak_gas_pressure_at_accepted_nodes_Pa"]),
+            "min_discharge_water_C":di["min_water_outlet_C"],
+            "max_discharge_water_C":di["max_water_outlet_C"],
+            "remaining_solid_inventory_kWh":r["remaining_solid_inventory_above_initial_J"]/3.6e6,
+            "all_discharge_accepted_water_nodes_ge_150C":r["all_discharge_accepted_water_nodes_ge_150C"],
+            "max_abs_component_thermal_residual_J":max(abs(v) for p in (ch,di) for v in p["component_thermal_residuals_J"].values()),
             "whole_mass_residual_kg":r["whole_cycle_gas_mass_residual_kg"],
             "whole_electric_boundary_residual_J":r["whole_sequence_electrical_boundary_residual_J"]}
         out[name]={"summary":summary,"result":r}
