@@ -101,7 +101,8 @@ def study(*,with_mesh_time_check:bool=True):
     if with_mesh_time_check:
         trial,hx=defined_cases()["10min_warmup_40kW_K"]
         grid={}
-        for cells,dt in ((4,120.),(8,120.),(12,120.),(8,60.)):
+        for cells,dt in ((4,120.),(8,120.),(12,120.),(16,120.),
+                         (8,60.),(12,60.)):
             t=replace(trial,transient_step_s=dt)
             h=replace(hx,cells=cells)
             r=simulate_coupled_transient_hx(bed,t,h)
@@ -118,14 +119,41 @@ def study(*,with_mesh_time_check:bool=True):
                     "coupled_discharge_HX_energy"][
                     "bed_HX_gas_cooler_system_first_law_residual_J"],
             }
+        # Independently change packed-bed spatial resolution while holding
+        # downstream HX mesh, time step, source and process service fixed.
+        # Crucial because M3.5 still has measurable bed-grid effects.
+        bed32=replace(bed,cells=32)
+        r_bed32=simulate_coupled_transient_hx(
+            bed32,replace(trial,transient_step_s=120.),
+            replace(hx,cells=8))
+        bed32_end=r_bed32[
+            "sampled_thermocouple_like_model_trace_NOT_observations"][-1][
+            "HX_water_outlet_end_C"]
         convergence={
           "grid":grid,
           "N8_to_N12_last_water_outlet_abs_difference_K":abs(
               grid["hxN8_dt120"]["water_outlet_last_C"]-
               grid["hxN12_dt120"]["water_outlet_last_C"]),
+          "N12_to_N16_last_water_outlet_abs_difference_K":abs(
+              grid["hxN12_dt120"]["water_outlet_last_C"]-
+              grid["hxN16_dt120"]["water_outlet_last_C"]),
           "dt120_to_dt60_at_N8_last_water_outlet_abs_difference_K":abs(
               grid["hxN8_dt120"]["water_outlet_last_C"]-
               grid["hxN8_dt60"]["water_outlet_last_C"]),
+          "dt120_to_dt60_at_N12_last_water_outlet_abs_difference_K":abs(
+              grid["hxN12_dt120"]["water_outlet_last_C"]-
+              grid["hxN12_dt60"]["water_outlet_last_C"]),
+          "bed_grid_comparison":{
+              "bedN16_HXN8_dt120_final_water_C":grid[
+                  "hxN8_dt120"]["water_outlet_last_C"],
+              "bedN32_HXN8_dt120_final_water_C":bed32_end,
+              "bedN16_to_bedN32_final_water_difference_K":abs(
+                  grid["hxN8_dt120"]["water_outlet_last_C"]-
+                  bed32_end),
+              "bedN32_model_full_hour_sampled_gate":
+                  r_bed32["model_only_thermal_duty_possible"],
+              "physical_equipment_validation":False,
+          },
           "absolute_mesh_and_timestep_independence_not_yet_proven":True,
           "no_experimental_validation":True,
           "between_step_gas_inlet_history_not_resolved":True,
