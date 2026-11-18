@@ -49,6 +49,15 @@ jobs:
           assert x["round_trip_efficiency"] is None
           assert x["matched_service_architecture_ranking"] is None
           assert x["grid_convergence_diagnostic"] is not None
+          threshold=x["charge_duration_threshold_mesh_diagnostic"]
+          assert threshold["charge_duration_grid_resolution_s"]==600
+          assert threshold["true_minimum_physical_charging_duration_established"] is False
+          assert not threshold["continuous_time_heat_delivery_guarantee"]
+          for mesh in (16,32,64):
+              g=threshold["results_by_axial_mesh"][f"cells_{mesh}"]
+              assert g["last_failing_declared_charge_duration_s"]==3000.
+              assert g["first_passing_declared_charge_duration_s"]==3600.
+              assert g["synthetic_source_and_HX_hardware_not_qualified"]
           for case in x["cases"].values():
               assert case["required_process_energy_J"]==1e6*case["case"]["discharge_duration_s"]
               assert case["actual_industrial_process_heat_qualified_J"]==0.
