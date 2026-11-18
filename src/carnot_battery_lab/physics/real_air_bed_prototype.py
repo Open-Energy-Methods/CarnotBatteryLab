@@ -64,7 +64,8 @@ def ergun_face(left:dict,right:dict,g:PackedBedGeometry,length_m:float):
     if not math.isfinite(length_m) or length_m<=0:
         raise ValueError("invalid face length")
     dp=left["P"]-right["P"]
-    if dp==0:return 0.,0.,0.
+    # Negligible pressure differences arise from EOS roundoff at equal P.
+    if abs(dp)<1e-7:return 0.,0.,0.
     up=left if dp>0 else right
     e=g.porosity;d=g.particle_diameter_m
     A=150*up["mu"]*(1-e)**2*length_m/(e**3*d*d)
