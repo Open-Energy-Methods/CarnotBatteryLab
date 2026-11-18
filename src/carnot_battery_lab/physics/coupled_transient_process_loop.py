@@ -21,6 +21,9 @@ from .transient_liquid_hx import (
     HXDynamicState,TransientHXAssumptions,advance_transient_hx,
     eos_interpolation_check,required_process_water_flow_from_real_enthalpy,
 )
+from .process_gas_bypass_control import (
+    GasBypassControllerAssumptions,advance_hx_with_predictive_gas_bypass,
+)
 
 
 @dataclass(frozen=True)
@@ -70,6 +73,7 @@ def simulate_coupled_transient_hx(
     bed:GasRockBed,trial:CoupledHXTrial,
     hx:TransientHXAssumptions=TransientHXAssumptions(),*,
     requested_process:ProcessLiquidHXContract=ProcessLiquidHXContract(),
+    gas_bypass_controller:GasBypassControllerAssumptions|None=None,
 )->dict:
     if (requested_process.thermal_duty_W!=1e6 or
         requested_process.liquid_return_C!=110. or
@@ -125,6 +129,9 @@ def simulate_coupled_transient_hx(
     rows=[]
     prefix_s=0.;prefix_open=True;first_failed=None
     preheat_water_energy=0.
+    valve_fraction=1.
+    control_within_band_count=0
+    controller_failed_steps=0
     delivered_nominal_qualified_J=0.  # ALWAYS 0, physical plant not validated
     warmup_intervals=int(round(trial.hx_warmup_duration_s/trial.transient_step_s))
     for i,dt in enumerate(_steps(
@@ -138,16 +145,35 @@ def simulate_coupled_transient_hx(
         hot_from_bed_mean_K=step.time_mean_outlet_K
         # Even the original packed-bed model may have time-varying output
         # WITHIN the step; only energy-matched mean is passed here.
-        h=advance_transient_hx(
-            hx,s_hx,gas_inlet_mean_K=hot_from_bed_mean_K,
-            gas_flow_kg_s=trial.discharge_gas_mass_flow_kg_s,
-            gas_cp_J_kgK=bed.gas_cp_J_kgK,
-            gas_density_kg_m3=bed.gas_density_kg_m3,
-            water_flow_kg_s=water_flow,
-            water_inlet_K=water_inlet_K,dt_s=dt,
-            required_water_supply_K=minimum_grade_K,
-            minimum_local_gas_liquid_approach_K=
-                requested_process.minimum_internal_approach_K)
+        if gas_bypass_controller is None:
+            ctrl=None
+            h=advance_transient_hx(
+                hx,s_hx,gas_inlet_mean_K=hot_from_bed_mean_K,
+                gas_flow_kg_s=trial.discharge_gas_mass_flow_kg_s,
+                gas_cp_J_kgK=bed.gas_cp_J_kgK,
+                gas_density_kg_m3=bed.gas_density_kg_m3,
+                water_flow_kg_s=water_flow,
+                water_inlet_K=water_inlet_K,dt_s=dt,
+                required_water_supply_K=minimum_grade_K,
+                minimum_local_gas_liquid_approach_K=
+                    requested_process.minimum_internal_approach_K)
+        else:
+            ctrl=advance_hx_with_predictive_gas_bypass(
+                gas_bypass_controller,hx,s_hx,
+                hot_gas_inlet_mean_K=hot_from_bed_mean_K,
+                gas_total_mass_flow_kg_s=trial.discharge_gas_mass_flow_kg_s,
+                gas_cp_J_kgK=bed.gas_cp_J_kgK,
+                gas_density_kg_m3=bed.gas_density_kg_m3,
+                water_mass_flow_kg_s=water_flow,
+                water_inlet_K=water_inlet_K,dt_s=dt,
+                previous_gas_through_fraction=valve_fraction,
+                required_supply_K=minimum_grade_K)
+            valve_fraction=ctrl["selected_through_hx_gas_fraction"]
+            h=ctrl["hx_step"]
+            if not ctrl["model_only_interval_nominal_150C_control_gate"]:
+                controller_failed_steps+=1
+            else:
+                control_within_band_count+=1
         s_hx=h["state"]
         # Return gas thermal correction is derived using the HX actual
         # time-AVERAGED outlet enthalpy, not its end instantaneous state.
@@ -187,7 +213,9 @@ def simulate_coupled_transient_hx(
         if is_warmup:
             preheat_water_energy+=h["net_boundary_liquid_heat_from_HX_J"]
         else:
-            ok=h["model_nominal_water_supply_and_1MW_in_step"]
+            ok=(h["model_nominal_water_supply_and_1MW_in_step"]
+                if ctrl is None else
+                ctrl["model_only_interval_nominal_150C_control_gate"])
             if prefix_open and ok:
                 prefix_s+=dt
             else:
@@ -210,6 +238,25 @@ def simulate_coupled_transient_hx(
               "assumed_model_liquid_single_phase"],
           "sampled_model_exact_1MW_grade_screen":h[
               "model_nominal_water_supply_and_1MW_in_step"],
+          "assumed_model_predictive_gas_bypass_control":(
+              None if ctrl is None else {
+                "status":ctrl["model_only_gas_bypass_control_status"],
+                "selected_hx_through_fraction":ctrl[
+                    "selected_through_hx_gas_fraction"],
+                "bypassed_fraction":ctrl["model_gas_bypass_fraction"],
+                "mass_balance_residual_kg_s":ctrl[
+                    "gas_mass_balance_residual_kg_s"],
+                "mean_control_duty_error_W":ctrl[
+                    "interval_mean_thermal_duty_error_W"],
+                "min_nodal_process_water_C":ctrl[
+                    "min_accepted_node_water_outlet_C"],
+                "max_nodal_process_water_C":ctrl[
+                    "max_accepted_node_water_outlet_C"],
+                "valve_slew_limited":ctrl["valve_slew_rate_limited"],
+                "model_only_interval_exact_150C_control":ctrl[
+                    "model_only_interval_nominal_150C_control_gate"],
+                "real_valve_qualified":False,
+              }),
           "gas_return_cooler_thermal_J_if_positive":
               max(0.,conditioner_signed),
           "gas_return_reheater_thermal_J_if_negative":
@@ -282,6 +329,17 @@ def simulate_coupled_transient_hx(
           "sampled_true_continuous_grade_proven":False,
           "qualified_real_1MW_process_water_J":0.,
           "actual_installed_UA_and_water_pressure_known":False,
+      },
+      "model_only_hypothetical_gas_bypass_control":{
+          "enabled":gas_bypass_controller is not None,
+          "parameters":(asdict(gas_bypass_controller)
+                        if gas_bypass_controller else None),
+          "steps_with_nodal_150C_band_and_mean_1MW":control_within_band_count,
+          "steps_outside_control_band_or_limited":controller_failed_steps,
+          "last_gas_fraction_through_HX":valve_fraction,
+          "gas_bypass_mass_balance_verified":True,
+          "all_60_min_controlled_process_service_qualified_as_real":False,
+          "hardware_actuator_or_valve_qualified":False,
       },
       "sampled_thermocouple_like_model_trace_NOT_observations":rows,
       "water_EOS_direct_verification":eos_interpolation_check(
