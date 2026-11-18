@@ -8,6 +8,8 @@ from carnot_battery_lab.physics.transient_liquid_hx import TransientHXAssumption
 from carnot_battery_lab.physics.coupled_transient_process_loop import CoupledHXTrial,simulate_coupled_transient_hx
 from carnot_battery_lab.physics.process_gas_bypass_control import GasBypassControllerAssumptions
 from carnot_battery_lab.physics.real_air_control_volume import AirVolumeState,advance_air_volume
+from carnot_battery_lab.physics.packed_bed import PackedBedGeometry
+from carnot_battery_lab.physics.real_air_bed_prototype import RealAirBedAssumptions,run_real_air_bed
 
 
 def study():
@@ -59,10 +61,27 @@ def study():
     }
     for k,v in cells.items():
         print("M3_8_REAL_AIR_CELL",k,json.dumps(v),flush=True)
+    # A separate pressure-driven lab-scale prototype, not the 1MW geometry.
+    g=PackedBedGeometry(length_m=.5,diameter_m=.3,
+                         particle_diameter_m=.01,porosity=.4)
+    prototypes={}
+    for n in (2,4,8):
+        a=RealAirBedAssumptions(g,cells=n)
+        p=run_real_air_bed(a,duration_s=10.)
+        prototypes[str(n)]={"assumptions":asdict(a),"result":p}
+        print("M3_8_PRESSURE_DRIVEN_BED",json.dumps({
+            "cells":n,"outlet_gas_K":p["final_gas_states"][-1]["T"],
+            "final_exit_mass_flow_kg_s":p["final_signed_face_mass_flow_kg_s"][-1],
+            "mass_residual_kg":p["mass_first_law_residual_kg"],
+            "energy_residual_J":p["energy_first_law_residual_J"],
+            "max_interstitial_Mach":p["maximum_accepted_node_interstitial_Mach"],
+        }),flush=True)
     return {
       "research_stage":"M3_8_TERMINAL_CONTROL_AND_REAL_AIR_VOLUME_PRIMITIVE",
       "original_contract":"1MW_110_to_150C_water", "results":results,
       "real_air_control_volume_tests":cells,
+      "standalone_pressure_driven_real_air_bed_prototypes":prototypes,
+      "prototype_heat_transfer_coefficient_not_measured":True,
       "fully_coupled_variable_property_bed_HX_implemented":False,
       "original_weber_dataset_raw_measurements_available":False,
       "experimental_validation_completed":False,
