@@ -121,7 +121,23 @@ def qualified_water_heat(t,solution,outlet_index,ledger_index,threshold_h):
     return float(seconds),float(heat)
 
 
-def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.):
+def process_water_split(h_out,h_in,h_target,demand_W,*,bypass=True):
+    """Ideal adiabatic mixing at fixed process mass flow and inlet state.
+
+    Returns HX flow, bypass flow, delivery enthalpy and signed duty.
+    When HX outlet is too cold, all flow passes the HX; unmet demand
+    remains visible. No auxiliary heat or cold-water mass is created.
+    """
+    if not all(math.isfinite(x) for x in (h_out,h_in,h_target,demand_W)) or h_target<=h_in or demand_W<=0:
+        raise ValueError("invalid process water demand")
+    m=demand_W/(h_target-h_in)
+    if bypass and h_out>h_target:
+        through=demand_W/(h_out-h_in)
+        return through,m-through,h_target,demand_W
+    return m,0.,h_out,m*(h_out-h_in)
+
+
+def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True):
     """Backward-compatible M3.10 baseline, with optional M3.11 routing.
 
     Valve K is an assumed loss per active bed port, identical in each
@@ -136,6 +152,11 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         raise ValueError("cycle count must be 1..10")
     if isinstance(water_control_gain_kg_s_K,bool) or not math.isfinite(water_control_gain_kg_s_K) or not 0<=water_control_gain_kg_s_K<=.02:
         raise ValueError('water feedback gain outside 0..0.02 kg/s/K')
+    if not isinstance(process_bypass,bool):
+        raise ValueError("process_bypass must be boolean")
+    if process_duty_W is not None:
+        if isinstance(process_duty_W,bool) or not math.isfinite(process_duty_W) or process_duty_W<=0 or water_control_gain_kg_s_K!=0:
+            raise ValueError("invalid fixed process duty or conflicting controller")
     from CoolProp import AbstractState
     from CoolProp.CoolProp import DmassUmass_INPUTS
     a=c.train;nb=a.bed_cells;nh=a.hx_cells;n=nb+nh+1
@@ -160,6 +181,15 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         if charge:return 0.
         return float(np.clip(a.water_flow_kg_s+water_control_gain_kg_s_K*(T_K-423.15),
                              .1*a.water_flow_kg_s,2*a.water_flow_kg_s))
+    demand_flow=None if process_duty_W is None else process_duty_W/(threshold_h-hi)
+    if demand_flow is not None and not .1*a.water_flow_kg_s<=demand_flow<=2*a.water_flow_kg_s:
+        raise ValueError("process demand outside assumed total water-flow envelope")
+    def delivery(h,charge):
+        if charge:return 0.,0.,h,0.
+        if process_duty_W is None:
+            flow=water_flow(float(_interp_checked(h,H,grid)),False)
+            return flow,0.,h,flow*(h-hi)
+        return process_water_split(h,hi,threshold_h,process_duty_W,bypass=process_bypass)
     init=AirVolumeState.from_TP(1.,a.initial_gas_K,a.initial_gas_P_Pa)
     is_=2*n;iw=is_+nb;il=iw+nh;iz=il+nh
     # Cumulative ledgers: heater electricity, heat to gas, blower electric,
@@ -167,7 +197,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
     # and three separately integrated gas/solid/wall/water exchange terms.
     y0=np.r_[vol*init.mass_kg,vol*init.internal_energy_J,
         np.full(nb,a.initial_bed_solid_K),np.full(nh,a.initial_water_wall_K),
-        np.full(nh,h0),np.zeros(11)]
+        np.full(nh,h0),np.zeros(14)]
     air=AbstractState("HEOS","Air")
     kh=(a.hx_assumed_friction*a.hx_length_m/a.hx_hydraulic_diameter_m+
         a.hx_total_minor_K)/nh
@@ -215,7 +245,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             qgw=Uh*(tg[nb:-1]-tw);qwl=Uh*(tw-tl)
             # Charge mode: no water export (stagnant liquid inventory);
             # discharge: same water inlet and fixed mass flow as M3.9.
-            mw=water_flow(tl[0],charge)
+            mw,mb,hd,qd=delivery(float(hl[0]),charge)
             eheat=min(c.heater_max_electric_W,max(0.,c.heater_feedback_W_K*(c.heater_target_K-tg[-1]))) if charge else 0.
             qheat=c.heater_efficiency*eheat
             qcool=0. if charge else c.cooler_UA_W_K*max(0.,tg[-1]-c.cooler_sink_K)
@@ -228,13 +258,15 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             d[iw:il]=(qgw-qwl)/Cw
             d[il:iz]=(mw*(np.r_[hl[1:],hi]-hl)+qwl)/Mw
             d[iz:]=[eheat,qheat,el,w,qcool,mw*(hl[0]-hi),f[nb,0],
-                    sum(qgs),sum(qgw),sum(qwl),mw]
+                    sum(qgs),sum(qgw),sum(qwl),mw,mb,
+                    0. if charge or process_duty_W is None else max(0.,process_duty_W-qd),
+                    0. if charge or process_duty_W is None else max(0.,qd-process_duty_W)]
             return d
         return fun
     def stage(y_start,seconds,charge):
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=np.r_[np.full(n,1e-10),np.full(n,.001),
-            np.full(nb+nh,1e-6),np.full(nh,.001),np.full(11,.001)],
+            np.full(nb+nh,1e-6),np.full(nh,.001),np.full(14,.001)],
             max_step=c.max_step_s,first_step=min(1e-6,seconds),dense_output=True)
         if not sol.success:raise RuntimeError(sol.message)
         y=sol.y[:,-1];ds=y-y_start
@@ -250,20 +282,45 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             raise ValueError("low-Mach or low-head scope exceeded")
         masses=float(sum(ds[:n]));Ug=float(sum(ds[n:2*n]))
         Us=Cs*float(sum(ds[is_:iw]));Uw=Cw*float(sum(ds[iw:il]));Hl=Mw*float(sum(ds[il:iz]))
-        Eheat,Qheat,Ebl,Wbl,Qcool,Qwater,Minterface,Qgs,Qgw,Qwl,Mwater=map(float,ds[iz:])
+        Eheat,Qheat,Ebl,Wbl,Qcool,Qwater,Minterface,Qgs,Qgw,Qwl,Mwater,Mbypass,deficit,excess=map(float,ds[iz:])
         residuals={'gas':Ug-Qheat-Wbl+Qcool+Qgs+Qgw,
                    'solid':Us-Qgs,'wall':Uw-Qgw+Qwl,'water':Hl-Qwl+Qwater}
         thermal_res=Ug+Us+Uw+Hl-Qheat-Wbl+Qcool+Qwater
         electrical_res=Ug+Us+Uw+Hl-Eheat-Ebl+Qcool+Qwater+(Eheat-Qheat)+(Ebl-Wbl)
         if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl)):
             raise RuntimeError("closed loop first law violated")
-        temps=_interp_checked(sol.y[il,:],H,grid)-273.15
-        qualified_s,qualified_J=(0.,0.) if charge else qualified_water_heat(sol.t,sol.sol,il,iz+5,threshold_h)
-        lo_s,lo_J=(0.,0.) if charge else qualified_water_heat(sol.t,sol.sol,il,iz+5,low_band_h)
-        hi_s,hi_J=(0.,0.) if charge else qualified_water_heat(sol.t,sol.sol,il,iz+5,high_band_h)
-        flows_water=[water_flow(T+273.15,charge) for T in temps]
+        hx_temps=_interp_checked(sol.y[il,:],H,grid)-273.15
+        delivered=[delivery(float(h),charge) for h in sol.y[il,:]]
+        temps=_interp_checked(np.asarray([x[2] for x in delivered]),H,grid)-273.15
+        flows_water=[x[0] for x in delivered]
+        def mixed_solution(t):
+            z=sol.sol(t)
+            return (delivery(float(z[il]),charge)[2],z[iz+5])
+        def grade(h):
+            return (0.,0.) if charge else qualified_water_heat(sol.t,mixed_solution,0,1,h)
+        qualified_s,qualified_J=grade(threshold_h)
+        lo_s,lo_J=grade(low_band_h)
+        hi_s,hi_J=grade(high_band_h)
+        matched_s=matched_J=None
+        if not charge and process_duty_W is not None:
+            lower=max(low_band_h,hi+.9985*process_duty_W/demand_flow)
+            upper=min(high_band_h,hi+1.0015*process_duty_W/demand_flow)
+            ls,lj=grade(lower);us,uj=grade(upper)
+            matched_s=max(0.,ls-us);matched_J=lj-uj
+            if abs(Mwater+Mbypass-demand_flow*seconds)>1e-6:
+                raise RuntimeError("process water mass balance violated")
+            if abs(Qwater-(process_duty_W*seconds-deficit+excess))>.2:
+                raise RuntimeError("process duty ledger violated")
         return y,dict(duration_s=seconds,
-            water_throughput_kg=Mwater,water_min_flow_at_nodes_kg_s=min(flows_water),
+            water_throughput_kg=Mwater+Mbypass,hx_water_throughput_kg=Mwater,bypass_water_throughput_kg=Mbypass,
+            process_demand_W=process_duty_W,
+            process_demand_flow_kg_s=None if charge else demand_flow,
+            process_duty_deficit_J=deficit,process_duty_excess_J=excess,
+            simultaneous_target_duration_s=matched_s,simultaneous_target_heat_J=matched_J,
+            final_hx_water_outlet_C=float(hx_temps[-1]),
+            min_delivered_duty_W=min(x[3] for x in delivered),
+            max_delivered_duty_W=max(x[3] for x in delivered),
+            water_min_flow_at_nodes_kg_s=min(flows_water),
             water_max_flow_at_nodes_kg_s=max(flows_water),
             water_target_band_duration_s=max(0.,lo_s-hi_s),
             water_target_band_heat_J=lo_J-hi_J,
@@ -327,6 +384,8 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         "gas_flow_direction_same_during_charge_and_discharge":not reverse_discharge,
         "valve_loss_K_per_active_bed_port":valve_loss_K,
         "water_control_gain_kg_s_K":water_control_gain_kg_s_K,
+        "process_duty_W":process_duty_W,"process_bypass":process_bypass,
+        "ideal_instantaneous_water_mixer":process_duty_W is not None and process_bypass,
         "water_flow_control_assumed_instantaneous":True,
         "instantaneous_ideal_valve_switch":True,
         "cycle_records":records,"cycle_count":cycles,
