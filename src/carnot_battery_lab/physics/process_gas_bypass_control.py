@@ -142,13 +142,19 @@ def advance_hx_with_predictive_gas_bypass(
     monotone=all(b>=a-1e-6*target for a,b in zip(values,values[1:]))
     if not monotone:
         requested=1.
-        status="NONMONOTONE_DYNAMIC_HX_DUTY_VS_GAS_FRACTION"
+        status=("NONMONOTONE_TERMINAL_TEMPERATURE_VS_GAS_FRACTION"
+                if settings.objective=="terminal_temperature" else
+                "NONMONOTONE_DYNAMIC_HX_DUTY_VS_GAS_FRACTION")
     elif values[-1]<target:
         requested=1.
-        status="INSUFFICIENT_THERMAL_DUTY_AT_FULL_HX_GAS_FLOW"
+        status=("TERMINAL_TEMPERATURE_LOW_AT_FULL_HX_GAS_FLOW"
+                if settings.objective=="terminal_temperature" else
+                "INSUFFICIENT_THERMAL_DUTY_AT_FULL_HX_GAS_FLOW")
     elif values[0]>target:
         requested=minimum
-        status="MINIMUM_HX_GAS_FLOW_STILL_OVERDELIVERS"
+        status=("TERMINAL_TEMPERATURE_HIGH_AT_MINIMUM_HX_GAS_FLOW"
+                if settings.objective=="terminal_temperature" else
+                "MINIMUM_HX_GAS_FLOW_STILL_OVERDELIVERS")
     else:
         low=minimum
         high=1.
