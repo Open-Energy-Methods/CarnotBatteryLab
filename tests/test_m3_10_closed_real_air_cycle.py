@@ -42,7 +42,12 @@ def test_closed_cycle_no_inventory_reset_and_separate_electricity():
         assert abs(phase["electrical_boundary_residual_J"])<.1
         assert phase["blower_electric_J"]>phase["blower_work_to_gas_J"]>0
         assert phase["max_accepted_node_Mach"]<.1
+        assert set(phase["component_thermal_residuals_J"])=={"gas","solid","wall","water"}
+        assert max(abs(q) for q in phase["component_thermal_residuals_J"].values())<.1
+        assert phase["min_gas_pressure_at_accepted_nodes_Pa"]<=min(phase["final_gas_pressure_Pa"])
+        assert phase["peak_gas_pressure_at_accepted_nodes_Pa"]>=max(phase["final_gas_pressure_Pa"])
     assert r["closed_gas_circulation_modeled"]
+    assert r["remaining_solid_inventory_above_initial_J"]>0
     assert not r["verified_periodic_cycle"]
     assert not r["industrial_1MW_service_qualified"]
     assert r["Carnot_battery_RTE"] is None
