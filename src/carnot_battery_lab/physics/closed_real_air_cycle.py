@@ -137,7 +137,7 @@ def process_water_split(h_out,h_in,h_target,demand_W,*,bypass=True):
     return m,0.,h_out,m*(h_out-h_in)
 
 
-def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True):
+def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None):
     """Backward-compatible M3.10 baseline, with optional M3.11 routing.
 
     Valve K is an assumed loss per active bed port, identical in each
@@ -157,6 +157,11 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
     if process_duty_W is not None:
         if isinstance(process_duty_W,bool) or not math.isfinite(process_duty_W) or process_duty_W<=0 or water_control_gain_kg_s_K!=0:
             raise ValueError("invalid fixed process duty or conflicting controller")
+    for key,val in (("cooler_cap_W",cooler_cap_W),("trace_interval_s",trace_interval_s)):
+        if val is not None and (isinstance(val,bool) or not math.isfinite(val) or val<=0):
+            raise ValueError("invalid "+key)
+    if trace_interval_s is not None and trace_interval_s<1.:
+        raise ValueError("trace interval must be at least one second")
     from CoolProp import AbstractState
     from CoolProp.CoolProp import DmassUmass_INPUTS
     a=c.train;nb=a.bed_cells;nh=a.hx_cells;n=nb+nh+1
@@ -236,6 +241,11 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             elif i<n-1:f.append(hx_darcy_face(l,r,area=a.hx_gas_flow_area_m2,loss_coefficient=kh))
             else:f.append(hx_darcy_face(l,r,area=c.return_area_m2,loss_coefficient=kh/2+c.return_loss_K))
         return st,np.asarray(f),w,el,head,order
+    def cooler_rate(T,charge):
+        q=0. if charge else c.cooler_UA_W_K*max(0.,T-c.cooler_sink_K)
+        return q if cooler_cap_W is None else min(q,cooler_cap_W)
+    def heater_rate(T,charge):
+        return min(c.heater_max_electric_W,max(0.,c.heater_feedback_W_K*(c.heater_target_K-T))) if charge else 0.
     def rhs(charge):
         def fun(_,y):
             st,f,w,el,head,order=flows(y,charge)
@@ -246,9 +256,9 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             # Charge mode: no water export (stagnant liquid inventory);
             # discharge: same water inlet and fixed mass flow as M3.9.
             mw,mb,hd,qd=delivery(float(hl[0]),charge)
-            eheat=min(c.heater_max_electric_W,max(0.,c.heater_feedback_W_K*(c.heater_target_K-tg[-1]))) if charge else 0.
+            eheat=heater_rate(tg[-1],charge)
             qheat=c.heater_efficiency*eheat
-            qcool=0. if charge else c.cooler_UA_W_K*max(0.,tg[-1]-c.cooler_sink_K)
+            qcool=cooler_rate(tg[-1],charge)
             d=np.zeros_like(y)
             d[order]=f[:,0]-np.roll(f[:,0],-1)
             d[n+order]=f[:,1]-np.roll(f[:,1],-1)
@@ -276,8 +286,8 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         for j in range(sol.t.size):
             states,faces,_,power,h,_=flows(sol.y[:,j],charge)
             ret=states[-1]['T']
-            peak_cooler=max(peak_cooler,0. if charge else c.cooler_UA_W_K*max(0.,ret-c.cooler_sink_K))
-            peak_heater_electric=max(peak_heater_electric,min(c.heater_max_electric_W,max(0.,c.heater_feedback_W_K*(c.heater_target_K-ret))) if charge else 0.)
+            peak_cooler=max(peak_cooler,cooler_rate(ret,charge))
+            peak_heater_electric=max(peak_heater_electric,heater_rate(ret,charge))
             peak_blower_electric=max(peak_blower_electric,power)
             peak_blower_flow=max(peak_blower_flow,float(faces[0,0]))
             maxMach=max(maxMach,float(np.max(faces[:,2])))
@@ -317,7 +327,19 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                 raise RuntimeError("process water mass balance violated")
             if abs(Qwater-(process_duty_W*seconds-deficit+excess))>.2:
                 raise RuntimeError("process duty ledger violated")
-        return y,dict(duration_s=seconds,
+        trace=None
+        if trace_interval_s is not None:
+            times=np.r_[np.arange(0.,seconds,trace_interval_s),seconds]
+            trace=[]
+            for t in times:
+                z=sol.sol(t)
+                states,faces,_,power,_,_=flows(z,charge)
+                _,_,hdel,qdel=delivery(float(z[il]),charge)
+                trace.append(dict(time_s=float(t),heater_W=heater_rate(states[-1]["T"],charge),
+                    cooler_W=cooler_rate(states[-1]["T"],charge),blower_W=power,
+                    gas_flow_kg_s=float(faces[0,0]),delivered_W=qdel,
+                    delivered_C=float(_interp_checked(hdel,H,grid))-273.15))
+        return y,dict(duration_s=seconds,phase_trace=trace,
             water_throughput_kg=Mwater+Mbypass,hx_water_throughput_kg=Mwater,bypass_water_throughput_kg=Mbypass,
             process_demand_W=process_duty_W,
             process_demand_flow_kg_s=None if charge else demand_flow,
@@ -396,6 +418,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         "valve_loss_K_per_active_bed_port":valve_loss_K,
         "water_control_gain_kg_s_K":water_control_gain_kg_s_K,
         "process_duty_W":process_duty_W,"process_bypass":process_bypass,
+        "cooler_cap_W":cooler_cap_W,"trace_interval_s":trace_interval_s,
         "ideal_instantaneous_water_mixer":process_duty_W is not None and process_bypass,
         "water_flow_control_assumed_instantaneous":True,
         "instantaneous_ideal_valve_switch":True,

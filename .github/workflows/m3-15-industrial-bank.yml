@@ -1,0 +1,59 @@
+name: m3-15-industrial-bank
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/industrial_bank.py'
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'scripts/run_m3_15_industrial_bank.py'
+      - 'tests/test_m3_15_industrial_bank.py'
+      - '.github/workflows/m3-15-industrial-bank.yml'
+      - 'docs/methods/M3_15_INDUSTRIAL_BANK.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_15_industrial_bank.py tests/test_m3_14b_fine_duty.py tests/test_m3_13_matched_duty.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [ideal_similarity,header_3m,header_4m,header_4m_cap3MW,header_4m_cap1MW,header_4m_cap3MW_coarse]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_15_industrial_bank.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m315-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m315-*
+          path: evidence
+      - run: python scripts/run_m3_15_industrial_bank.py --aggregate evidence --output results/m3_15_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m315-summary
+          path: results/m3_15_summary.json
+          if-no-files-found: error
