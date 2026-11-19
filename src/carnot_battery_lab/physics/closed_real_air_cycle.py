@@ -137,7 +137,7 @@ def process_water_split(h_out,h_in,h_target,demand_W,*,bypass=True):
     return m,0.,h_out,m*(h_out-h_in)
 
 
-def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None,cooler_control_K=None,recuperator=None):
+def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None,cooler_control_K=None,recuperator=None,main_heat_loss=None):
     """Backward-compatible M3.10 baseline, with optional M3.11 routing.
 
     Valve K is an assumed loss per active bed port, identical in each
@@ -167,6 +167,9 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         if not isinstance(recuperator,ThermalBuffer):raise ValueError("invalid thermal buffer")
     if trace_interval_s is not None and trace_interval_s<1.:
         raise ValueError("trace interval must be at least one second")
+    if main_heat_loss is not None:
+        from .thermal_retention import MainHeatLoss
+        if not isinstance(main_heat_loss,MainHeatLoss):raise ValueError("invalid main heat loss")
     from CoolProp import AbstractState
     from CoolProp.CoolProp import DmassUmass_INPUTS
     a=c.train;nb=a.bed_cells;nh=a.hx_cells;n=nb+nh+1
@@ -213,6 +216,8 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
     ir=iz+14
     if recuperator is not None:
         y0=np.r_[y0,a.initial_gas_K,0.,0.,0.]
+    iq=ir+(4 if recuperator is not None else 0)
+    if main_heat_loss is not None:y0=np.r_[y0,0.,0.,0.]
     air=AbstractState("HEOS","Air")
     kh=(a.hx_assumed_friction*a.hx_length_m/a.hx_hydraulic_diameter_m+
         a.hx_total_minor_K)/nh
@@ -284,13 +289,23 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             if recuperator is not None:
                 capture,release,loss=recuperator.rates(tg[-1],y[ir],charge)
                 d[2*n-1]+=release-capture
-                d[ir:]=[(capture-release-loss)/recuperator.capacity_J_K,capture,release,loss]
+                d[ir:ir+4]=[(capture-release-loss)/recuperator.capacity_J_K,capture,release,loss]
+            if main_heat_loss is not None:
+                amb=main_heat_loss.ambient_K
+                qr=main_heat_loss.rock_UA_W_K/nb*(ts-amb)
+                qw=main_heat_loss.wall_UA_W_K/nh*(tw-amb)
+                qg=main_heat_loss.return_UA_W_K*(tg[-1]-amb)
+                d[is_:iw]-=qr/Cs
+                d[iw:il]-=qw/Cw
+                d[2*n-1]-=qg
+                d[iq:iq+3]=[sum(qr),sum(qw),qg]
             return d
         return fun
     def stage(y_start,seconds,charge):
         atol=np.r_[np.full(n,1e-10),np.full(n,.001),
             np.full(nb+nh,1e-6),np.full(nh,.001),np.full(14,.001)]
         if recuperator is not None:atol=np.r_[atol,1e-6,.001,.001,.001]
+        if main_heat_loss is not None:atol=np.r_[atol,.001,.001,.001]
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=atol,
             max_step=c.max_step_s,first_step=min(1e-6,seconds),dense_output=True)
@@ -321,12 +336,15 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         if recuperator is not None:
             capture,release,loss=map(float,ds[ir+1:ir+4])
             buffer_change=recuperator.capacity_J_K*float(ds[ir])
-        residuals={'gas':Ug-Qheat-Wbl+Qcool+Qgs+Qgw+capture-release,
-                   'solid':Us-Qgs,'wall':Uw-Qgw+Qwl,'water':Hl-Qwl+Qwater}
+        rock_loss=wall_loss=return_loss=0.
+        if main_heat_loss is not None:rock_loss,wall_loss,return_loss=map(float,ds[iq:iq+3])
+        main_loss=rock_loss+wall_loss+return_loss
+        residuals={'gas':Ug-Qheat-Wbl+Qcool+Qgs+Qgw+capture-release+return_loss,
+                   'solid':Us-Qgs+rock_loss,'wall':Uw-Qgw+Qwl+wall_loss,'water':Hl-Qwl+Qwater}
         if recuperator is not None:residuals['buffer']=buffer_change-capture+release+loss
-        thermal_res=Ug+Us+Uw+Hl+buffer_change-Qheat-Wbl+Qcool+Qwater+loss
-        electrical_res=Ug+Us+Uw+Hl+buffer_change-Eheat-Ebl+Qcool+Qwater+loss+(Eheat-Qheat)+(Ebl-Wbl)
-        if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl),abs(capture),abs(release),abs(loss)):
+        thermal_res=Ug+Us+Uw+Hl+buffer_change-Qheat-Wbl+Qcool+Qwater+loss+main_loss
+        electrical_res=Ug+Us+Uw+Hl+buffer_change-Eheat-Ebl+Qcool+Qwater+loss+main_loss+(Eheat-Qheat)+(Ebl-Wbl)
+        if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl),abs(capture),abs(release),abs(loss),abs(main_loss)):
             raise RuntimeError("closed loop first law violated")
         hx_temps=_interp_checked(sol.y[il,:],H,grid)-273.15
         delivered=[delivery(float(h),charge) for h in sol.y[il,:]]
@@ -363,6 +381,8 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                     gas_flow_kg_s=float(faces[0,0]),delivered_W=qdel,
                     delivered_C=float(_interp_checked(hdel,H,grid))-273.15))
         return y,dict(duration_s=seconds,phase_trace=trace,
+            main_rock_ambient_heat_J=rock_loss,main_wall_ambient_heat_J=wall_loss,
+            main_return_ambient_heat_J=return_loss,main_ambient_heat_J=main_loss,
             recuperator_captured_J=capture,recuperator_returned_J=release,recuperator_ambient_loss_J=loss,
             recuperator_inventory_change_J=buffer_change,
             recuperator_end_K=None if recuperator is None else float(y[ir]),
@@ -450,6 +470,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         "process_duty_W":process_duty_W,"process_bypass":process_bypass,
         "cooler_cap_W":cooler_cap_W,"trace_interval_s":trace_interval_s,
         "cooler_control_K":cooler_control_K,"recuperator_assumptions":None if recuperator is None else asdict(recuperator),
+        "main_heat_loss_assumptions":None if main_heat_loss is None else asdict(main_heat_loss),
         "ideal_instantaneous_water_mixer":process_duty_W is not None and process_bypass,
         "water_flow_control_assumed_instantaneous":True,
         "instantaneous_ideal_valve_switch":True,
