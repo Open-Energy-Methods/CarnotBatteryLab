@@ -35,3 +35,17 @@ def water_service_exergy(mass_kg,hin,hout,sin,sout,T0=298.15):
     if not all(math.isfinite(x) for x in (mass_kg,hin,hout,sin,sout,T0)) or mass_kg<0 or T0<=0:
         raise ValueError("invalid exergy inputs")
     return mass_kg*((hout-hin)-T0*(sout-sin))
+
+
+@dataclass(frozen=True)
+class MainHeatLoss:
+    """Independent assumed lumped insulation conductances, not vendor data."""
+    rock_UA_W_K:float
+    wall_UA_W_K:float
+    return_UA_W_K:float
+    ambient_K:float=298.15
+
+    def __post_init__(self):
+        vals=(self.rock_UA_W_K,self.wall_UA_W_K,self.return_UA_W_K,self.ambient_K)
+        if not all(math.isfinite(x) for x in vals) or min(vals[:3])<0 or not 280<self.ambient_K<350:
+            raise ValueError("invalid main insulation assumptions")
