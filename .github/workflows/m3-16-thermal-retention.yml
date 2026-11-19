@@ -1,0 +1,59 @@
+name: m3-16-thermal-retention
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/thermal_retention.py'
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'scripts/run_m3_16_thermal_retention.py'
+      - 'tests/test_m3_16_thermal_retention.py'
+      - '.github/workflows/m3-16-thermal-retention.yml'
+      - 'docs/methods/M3_16_THERMAL_RETENTION.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_16_thermal_retention.py tests/test_m3_15_industrial_bank.py tests/test_m3_13_matched_duty.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [reference,cap0,cap250k,cap500k,cap750k,cap1MW_n12,cap1MW_halfstep,feedback_return_160C,feedback_return_170C,cap0_heater3MW,cap500k_heater3MW,cap500k_buffer,cap0_buffer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_16_thermal_retention.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m316-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m316-*
+          path: evidence
+      - run: python scripts/run_m3_16_thermal_retention.py --aggregate evidence --output results/m3_16_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m316-summary
+          path: results/m3_16_summary.json
+          if-no-files-found: error
