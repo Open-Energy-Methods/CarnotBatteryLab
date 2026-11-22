@@ -117,7 +117,7 @@ def aggregate(root):
         thermally_compatible_HP150_charge_candidates=[k for k,v in cases.items() if v["eligible"] and v["direct_HP_gate"]["water_temperature_suffices"]],
         redesigned_charge_targets_matching_same_process_service=[k for k,v in cases.items() if v["eligible"]],
         booster_results_are_upper_bounds_only=True,
-        80C_source_heat_pump_compressor_map_not_validated=True,
+        source80_heat_pump_compressor_map_not_validated=True,
         integrated_Carnot_battery_RTE=None,measured_HP_TES_performance=None)
     print(json.dumps(out),flush=True)
     return out
