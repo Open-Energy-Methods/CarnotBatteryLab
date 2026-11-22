@@ -1,0 +1,59 @@
+name: m3-20-dynamic-hp-charge
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/dynamic_hp_charger.py'
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'scripts/run_m3_20_dynamic_hp_charge.py'
+      - 'tests/test_m3_20_dynamic_hp_charger.py'
+      - '.github/workflows/m3-20-dynamic-hp-charge.yml'
+      - 'docs/methods/M3_20_DYNAMIC_HP_CHARGE.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_20_dynamic_hp_charger.py tests/test_m3_19_charge_architectures.py tests/test_m3_18_transcritical.py tests/test_m3_16b_refinement.py tests/test_m3_13_matched_duty.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [electric_only,hp500_ua25k,hp1000_ua25k,hp1000_ua100k,hp1000_ua100k_n12,hp1000_ua100k_halfstep,hp1000_ua100k_limitedwater]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_20_dynamic_hp_charge.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m320-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m320-*
+          path: evidence
+      - run: python scripts/run_m3_20_dynamic_hp_charge.py --aggregate evidence --output results/m3_20_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m320-summary
+          path: results/m3_20_summary.json
+          if-no-files-found: error
