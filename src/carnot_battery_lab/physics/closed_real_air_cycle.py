@@ -137,7 +137,7 @@ def process_water_split(h_out,h_in,h_target,demand_W,*,bypass=True):
     return m,0.,h_out,m*(h_out-h_in)
 
 
-def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None,cooler_control_K=None,recuperator=None,main_heat_loss=None):
+def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None,cooler_control_K=None,recuperator=None,main_heat_loss=None,hp_charger=None):
     """Backward-compatible M3.10 baseline, with optional M3.11 routing.
 
     Valve K is an assumed loss per active bed port, identical in each
@@ -170,6 +170,10 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
     if main_heat_loss is not None:
         from .thermal_retention import MainHeatLoss
         if not isinstance(main_heat_loss,MainHeatLoss):raise ValueError("invalid main heat loss")
+    if hp_charger is not None:
+        from .dynamic_hp_charger import HPChargeInterface
+        if not isinstance(hp_charger,HPChargeInterface):
+            raise ValueError("invalid dynamic HP charge interface")
     from CoolProp import AbstractState
     from CoolProp.CoolProp import DmassUmass_INPUTS
     a=c.train;nb=a.bed_cells;nh=a.hx_cells;n=nb+nh+1
@@ -218,6 +222,10 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         y0=np.r_[y0,a.initial_gas_K,0.,0.,0.]
     iq=ir+(4 if recuperator is not None else 0)
     if main_heat_loss is not None:y0=np.r_[y0,0.,0.,0.]
+    ihp=iq+(3 if main_heat_loss is not None else 0)
+    if hp_charger is not None:
+        y0=np.r_[y0,np.zeros(6)]
+        from CoolProp.CoolProp import PropsSI
     air=AbstractState("HEOS","Air")
     kh=(a.hx_assumed_friction*a.hx_length_m/a.hx_hydraulic_diameter_m+
         a.hx_total_minor_K)/nh
@@ -254,13 +262,27 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             if i<nb:f.append(ergun_face(l,r,g,dx))
             elif i==nb:f.append(mixed_face(l,r))
             elif i<n-1:f.append(hx_darcy_face(l,r,area=a.hx_gas_flow_area_m2,loss_coefficient=kh))
-            else:f.append(hx_darcy_face(l,r,area=c.return_area_m2,loss_coefficient=kh/2+c.return_loss_K))
+            else:f.append(hx_darcy_face(l,r,area=c.return_area_m2,loss_coefficient=kh/2+c.return_loss_K+
+                    (hp_charger.gas_minor_loss_K if hp_charger is not None and charge else 0.)))
         return st,np.asarray(f),w,el,head,order
     def cooler_rate(T,charge):
         q=0. if charge else c.cooler_UA_W_K*max(0.,T-(c.cooler_sink_K if cooler_control_K is None else cooler_control_K))
         return q if cooler_cap_W is None else min(q,cooler_cap_W)
     def heater_rate(T,charge):
         return min(c.heater_max_electric_W,max(0.,c.heater_feedback_W_K*(c.heater_target_K-T))) if charge else 0.
+    def charge_split(return_state,mass_flow,charge):
+        heat_request=c.heater_efficiency*heater_rate(return_state["T"],charge)
+        if hp_charger is None:
+            return dict(heat_pump_to_gas_W=0.,booster_heat_to_gas_W=heat_request,
+                booster_electric_W=heat_request/c.heater_efficiency,
+                heat_pump_compressor_electric_W=0.,assumed_external_source_heat_W=0.,
+                circulation_pump_electric_W=0.,hot_water_flow_kg_s=0.,
+                source_water_flow_kg_s=0.)
+        return hp_charger.split(charge=charge,
+            return_gas_T_K=return_state["T"],return_gas_P_Pa=return_state["P"],
+            return_gas_h_J_kg=return_state["h"],gas_mass_flow_kg_s=max(0.,float(mass_flow)),
+            requested_gas_heating_W=heat_request,
+            resistance_heater_efficiency=c.heater_efficiency,props=PropsSI)
     def rhs(charge):
         def fun(_,y):
             st,f,w,el,head,order=flows(y,charge)
@@ -271,13 +293,15 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             # Charge mode: no water export (stagnant liquid inventory);
             # discharge: same water inlet and fixed mass flow as M3.9.
             mw,mb,hd,qd=delivery(float(hl[0]),charge)
-            eheat=heater_rate(tg[-1],charge)
-            qheat=c.heater_efficiency*eheat
+            hps=charge_split(st[-1],f[0,0],charge)
+            eheat=hps["booster_electric_W"]
+            qheat=hps["booster_heat_to_gas_W"]
+            qhp=hps["heat_pump_to_gas_W"]
             qcool=cooler_rate(tg[-1],charge)
             d=np.zeros_like(y)
             d[order]=f[:,0]-np.roll(f[:,0],-1)
             d[n+order]=f[:,1]-np.roll(f[:,1],-1)
-            d[n:2*n]-=np.r_[qgs,qgw,qcool-qheat]
+            d[n:2*n]-=np.r_[qgs,qgw,qcool-qheat-qhp]
             d[n+order[0]]+=w
             d[is_:iw]=qgs/Cs
             d[iw:il]=(qgw-qwl)/Cw
@@ -299,6 +323,12 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                 d[iw:il]-=qw/Cw
                 d[2*n-1]-=qg
                 d[iq:iq+3]=[sum(qr),sum(qw),qg]
+            if hp_charger is not None:
+                d[ihp:ihp+6]=[qhp,
+                    hps["heat_pump_compressor_electric_W"],
+                    hps["assumed_external_source_heat_W"],
+                    hps["circulation_pump_electric_W"],
+                    hps["hot_water_flow_kg_s"],hps["source_water_flow_kg_s"]]
             return d
         return fun
     def stage(y_start,seconds,charge):
@@ -306,6 +336,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             np.full(nb+nh,1e-6),np.full(nh,.001),np.full(14,.001)]
         if recuperator is not None:atol=np.r_[atol,1e-6,.001,.001,.001]
         if main_heat_loss is not None:atol=np.r_[atol,.001,.001,.001]
+        if hp_charger is not None:atol=np.r_[atol,.001,.001,.001,.001,1e-8,1e-8]
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=atol,
             max_step=c.max_step_s,first_step=min(1e-6,seconds),dense_output=True)
@@ -320,7 +351,8 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             ret=states[-1]['T']
             peak_gas_K=max(peak_gas_K,max(x['T'] for x in states))
             peak_cooler=max(peak_cooler,cooler_rate(ret,charge))
-            peak_heater_electric=max(peak_heater_electric,heater_rate(ret,charge))
+            sharing=charge_split(states[-1],faces[0,0],charge)
+            peak_heater_electric=max(peak_heater_electric,sharing["booster_electric_W"])
             peak_blower_electric=max(peak_blower_electric,power)
             peak_blower_flow=max(peak_blower_flow,float(faces[0,0]))
             maxMach=max(maxMach,float(np.max(faces[:,2])))
@@ -339,12 +371,17 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         rock_loss=wall_loss=return_loss=0.
         if main_heat_loss is not None:rock_loss,wall_loss,return_loss=map(float,ds[iq:iq+3])
         main_loss=rock_loss+wall_loss+return_loss
-        residuals={'gas':Ug-Qheat-Wbl+Qcool+Qgs+Qgw+capture-release+return_loss,
+        HP_heat=HP_electric=HP_source=HP_pumps=HP_hotwater=HP_sourcewater=0.
+        if hp_charger is not None:
+            HP_heat,HP_electric,HP_source,HP_pumps,HP_hotwater,HP_sourcewater=map(float,ds[ihp:ihp+6])
+            if abs(HP_heat-HP_electric-HP_source)>max(.01,1e-8*max(1.,HP_heat)):
+                raise RuntimeError("HP source + compressor heat balance violated")
+        residuals={'gas':Ug-Qheat-HP_heat-Wbl+Qcool+Qgs+Qgw+capture-release+return_loss,
                    'solid':Us-Qgs+rock_loss,'wall':Uw-Qgw+Qwl+wall_loss,'water':Hl-Qwl+Qwater}
         if recuperator is not None:residuals['buffer']=buffer_change-capture+release+loss
-        thermal_res=Ug+Us+Uw+Hl+buffer_change-Qheat-Wbl+Qcool+Qwater+loss+main_loss
-        electrical_res=Ug+Us+Uw+Hl+buffer_change-Eheat-Ebl+Qcool+Qwater+loss+main_loss+(Eheat-Qheat)+(Ebl-Wbl)
-        if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl),abs(capture),abs(release),abs(loss),abs(main_loss)):
+        thermal_res=Ug+Us+Uw+Hl+buffer_change-Qheat-HP_heat-Wbl+Qcool+Qwater+loss+main_loss
+        electrical_res=Ug+Us+Uw+Hl+buffer_change-Eheat-Ebl-HP_electric-HP_source-HP_pumps+Qcool+Qwater+loss+main_loss+(Eheat-Qheat)+(Ebl-Wbl)+HP_pumps
+        if abs(masses)>1e-8 or max(abs(thermal_res),abs(electrical_res),*(abs(v) for v in residuals.values()))>1e-6*max(1.,abs(Qheat),abs(Qcool),abs(Qwater),abs(Wbl),abs(capture),abs(release),abs(loss),abs(main_loss),abs(HP_heat),abs(HP_electric)):
             raise RuntimeError("closed loop first law violated")
         hx_temps=_interp_checked(sol.y[il,:],H,grid)-273.15
         delivered=[delivery(float(h),charge) for h in sol.y[il,:]]
@@ -376,13 +413,21 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                 z=sol.sol(t)
                 states,faces,_,power,_,_=flows(z,charge)
                 _,_,hdel,qdel=delivery(float(z[il]),charge)
-                trace.append(dict(time_s=float(t),heater_W=heater_rate(states[-1]["T"],charge),
-                    heater_to_gas_W=c.heater_efficiency*heater_rate(states[-1]["T"],charge),
+                share=charge_split(states[-1],faces[0,0],charge)
+                trace.append(dict(time_s=float(t),heater_W=share["booster_electric_W"],
+                    heater_to_gas_W=share["booster_heat_to_gas_W"],
+                    heat_pump_to_gas_W=share["heat_pump_to_gas_W"],
+                    heat_pump_compressor_electric_W=share["heat_pump_compressor_electric_W"],
+                    assumed_external_source_heat_W=share["assumed_external_source_heat_W"],
+                    heat_pump_circulation_pump_electric_W=share["circulation_pump_electric_W"],
                     return_gas_K=float(states[-1]["T"]),
                     cooler_W=cooler_rate(states[-1]["T"],charge),blower_W=power,
                     gas_flow_kg_s=float(faces[0,0]),delivered_W=qdel,
                     delivered_C=float(_interp_checked(hdel,H,grid))-273.15))
         return y,dict(duration_s=seconds,phase_trace=trace,
+            HP_heat_to_gas_J=HP_heat,HP_compressor_electric_J=HP_electric,
+            HP_source_heat_J=HP_source,HP_circulation_pump_electric_J=HP_pumps,
+            HP_hot_water_mass_kg=HP_hotwater,HP_source_water_mass_kg=HP_sourcewater,
             main_rock_ambient_heat_J=rock_loss,main_wall_ambient_heat_J=wall_loss,
             main_return_ambient_heat_J=return_loss,main_ambient_heat_J=main_loss,
             recuperator_captured_J=capture,recuperator_returned_J=release,recuperator_ambient_loss_J=loss,
@@ -458,6 +503,9 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         "whole_cycle_gas_mass_residual_kg":float(sum(y2[:n]-y0[:n])),
         "whole_sequence_electrical_boundary_residual_J":ch["electrical_boundary_residual_J"]+dis["electrical_boundary_residual_J"],
         "total_heater_and_blower_electric_J":ch["heater_electric_J"]+ch["blower_electric_J"]+dis["blower_electric_J"],
+        "total_electric_including_HP_and_aux_pumps_J":sum(
+            p[stage][k] for p in records for stage in ("charge","discharge")
+            for k in ("heater_electric_J","blower_electric_J","HP_compressor_electric_J","HP_circulation_pump_electric_J")),
         "water_heat_not_qualified_process_service_J":dis["water_boundary_heat_J"],
         "remaining_total_thermal_inventory_above_initial_J":sum(
             ch[k]+dis[k] for k in ('gas_internal_energy_change_J','solid_energy_change_J',
@@ -473,6 +521,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         "cooler_cap_W":cooler_cap_W,"trace_interval_s":trace_interval_s,
         "cooler_control_K":cooler_control_K,"recuperator_assumptions":None if recuperator is None else asdict(recuperator),
         "main_heat_loss_assumptions":None if main_heat_loss is None else asdict(main_heat_loss),
+        "HP_charging_interface_assumptions":None if hp_charger is None else asdict(hp_charger),
         "ideal_instantaneous_water_mixer":process_duty_W is not None and process_bypass,
         "water_flow_control_assumed_instantaneous":True,
         "instantaneous_ideal_valve_switch":True,
