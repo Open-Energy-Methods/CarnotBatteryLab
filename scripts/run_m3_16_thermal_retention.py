@@ -22,18 +22,18 @@ CASES={
     "cap0_buffer":(16,5.,0.,None,5.,True),
 }
 
-def run(name):
+def run(name,*,cases=CASES,main_heat_loss=None):
     from CoolProp.CoolProp import PropsSI
     from carnot_battery_lab.physics.closed_real_air_cycle import ClosedCycle,run_closed_cycle
     from carnot_battery_lab.physics.periodic_recovery import periodic_audit
-    n,dt,cap,setpoint,heater,buffer=CASES[name]
+    n,dt,cap,setpoint,heater,buffer=cases[name]
     base=ClosedCycle()
     base=replace(base,discharge_s=600.,max_step_s=dt,train=replace(base.train,bed_cells=n,hx_cells=n))
     c,g=equivalent_bank(base,modules=1000,vessels=20,header_diameter_m=4.)
     c=replace(c,heater_max_electric_W=heater*1e6)
     buf=ThermalBuffer(5e6,1e5,100.) if buffer else None
     v=run_closed_cycle(c,reverse_discharge=True,valve_loss_K=2.,cycles=10,process_duty_W=1e6,
-                       cooler_cap_W=cap,cooler_control_K=setpoint,recuperator=buf,trace_interval_s=10.)
+                       cooler_cap_W=cap,cooler_control_K=setpoint,recuperator=buf,trace_interval_s=10.,main_heat_loss=main_heat_loss)
     for row in v["cycle_records"]:
         for phase in ("charge","discharge"):
             z=row[phase]
@@ -51,7 +51,13 @@ def run(name):
     assert abs(v["repeated_sequence_electrical_residual_J"])<50.
     audit=periodic_audit(v["cycle_records"])
     buffer_gate=buffer_periodic_gate(v["cycle_records"])
-    periodic=bool(audit["approximate_periodic_model_gate_pass"] and buffer_gate)
+    loss_gate=True
+    for prev,cur in zip(v["cycle_records"][-3:-1],v["cycle_records"][-2:]):
+        for phase in ("charge","discharge"):
+            for key in ("main_rock_ambient_heat_J","main_wall_ambient_heat_J","main_return_ambient_heat_J"):
+                aa,bb=prev[phase][key],cur[phase][key]
+                loss_gate=loss_gate and abs(aa-bb)<=max(10.,.005*max(abs(aa),abs(bb)))
+    periodic=bool(audit["approximate_periodic_model_gate_pass"] and buffer_gate and loss_gate)
     row=v["cycle_records"][-1];ch=row["charge"].copy();d=row["discharge"]
     ch["assumed_heater_nameplate_W"]=c.heater_max_electric_W
     sched=staggered_loads(ch,d,1e6)
@@ -67,7 +73,12 @@ def run(name):
     # Target reference only (no actual-flow exergy claimed for partial service).
     Btarget=water_service_exergy(600e6/(h2-h1),h1,h2,s1,s2)
     summary=dict(case=name,cells=n,max_step_s=dt,cooler_cap_W=cap,cooler_control_K=setpoint,heater_per_bank_MW=heater,buffer_enabled=buffer,
-        periodic=periodic,buffer_periodic=buffer_gate,full=full,thermal_gate=thermal_gate,
+        periodic=periodic,buffer_periodic=buffer_gate,main_loss_periodic=loss_gate,full=full,thermal_gate=thermal_gate,
+        main_heat_loss_assumptions=v['main_heat_loss_assumptions'],
+        main_heat_loss_J=ch['main_ambient_heat_J']+d['main_ambient_heat_J'],
+        main_rock_loss_J=ch['main_rock_ambient_heat_J']+d['main_rock_ambient_heat_J'],
+        main_wall_loss_J=ch['main_wall_ambient_heat_J']+d['main_wall_ambient_heat_J'],
+        main_return_loss_J=ch['main_return_ambient_heat_J']+d['main_return_ambient_heat_J'],
         eligible=bool(full and thermal_gate and d["min_hx_water_outlet_at_accepted_nodes_C"]>=150.),
         matched_s=d["simultaneous_target_duration_s"],deficit_J=d["process_duty_deficit_J"],
         raw_margin_K=d["min_hx_water_outlet_at_accepted_nodes_C"]-150.,

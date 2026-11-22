@@ -1,0 +1,61 @@
+name: m3-16b-refinement
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/retention_refinement.py'
+      - 'src/carnot_battery_lab/physics/thermal_retention.py'
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'scripts/run_m3_16_thermal_retention.py'
+      - 'scripts/run_m3_16b_refinement.py'
+      - 'tests/test_m3_16b_refinement.py'
+      - '.github/workflows/m3-16b-refinement.yml'
+      - 'docs/methods/M3_16B_REFINEMENT.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_16b_refinement.py tests/test_m3_16_thermal_retention.py tests/test_m3_15_industrial_bank.py tests/test_m3_13_matched_duty.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [h5_n16,h5_n12,h5_halfstep,h3_n16,h3_n12,h3_n8,h3_halfstep,h3_quarterstep,h2_n16,h3_loss100,h3_loss500,h3_loss1000]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_16b_refinement.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m316b-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m316b-*
+          path: evidence
+      - run: python scripts/run_m3_16b_refinement.py --aggregate evidence --output results/m3_16b_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m316b-summary
+          path: results/m3_16b_summary.json
+          if-no-files-found: error
