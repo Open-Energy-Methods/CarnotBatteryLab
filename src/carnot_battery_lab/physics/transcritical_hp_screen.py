@@ -71,9 +71,9 @@ def refrigerant_id(pure_or_mix):
     if pure_or_mix in ("R290_R601a_60_40","R290_R601a_50_50"):
         w1=.6 if pure_or_mix.endswith("60_40") else .5
         m1=PropsSI("M","HEOS::Propane")
-        m2=PropsSI("M","HEOS::IsoPentane")
+        m2=PropsSI("M","HEOS::Isopentane")
         x1=(w1/m1)/(w1/m1+(1-w1)/m2)
-        return f"HEOS::Propane[{x1:.14g}]&IsoPentane[{1-x1:.14g}]",dict(
+        return f"HEOS::Propane[{x1:.14g}]&Isopentane[{1-x1:.14g}]",dict(
             fluid=pure_or_mix,mixture=True,mass_fraction_propane=w1,
             mole_fraction_propane=x1,EOS="CoolProp HEOS, not REFPROP GERG-2008")
     raise ValueError("refrigerant not in preregistered experimental/scope list")
