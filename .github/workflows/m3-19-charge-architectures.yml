@@ -1,0 +1,59 @@
+name: m3-19-charge-architectures
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/charging_architecture.py'
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'scripts/run_m3_19_charge_architectures.py'
+      - 'tests/test_m3_19_charge_architectures.py'
+      - '.github/workflows/m3-19-charge-architectures.yml'
+      - 'docs/methods/M3_19_CHARGE_ARCHITECTURES.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_19_charge_architectures.py tests/test_m3_18_transcritical.py tests/test_m3_16b_refinement.py tests/test_m3_13_matched_duty.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [gas190_n16,gas180_n16,gas175_n16,gas165_n16,gas145_n16,gas190_n12,gas175_n12,gas190_halfstep,gas175_halfstep]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_19_charge_architectures.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m319-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m319-*
+          path: evidence
+      - run: python scripts/run_m3_19_charge_architectures.py --aggregate evidence --output results/m3_19_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m319-summary
+          path: results/m3_19_summary.json
+          if-no-files-found: error

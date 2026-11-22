@@ -461,6 +461,8 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                 states,faces,_,power,_,_=flows(z,charge)
                 _,_,hdel,qdel=delivery(float(z[il]),charge)
                 trace.append(dict(time_s=float(t),heater_W=heater_rate(states[-1]["T"],charge),
+                    heater_to_gas_W=c.heater_efficiency*heater_rate(states[-1]["T"],charge),
+                    return_gas_K=float(states[-1]["T"]),
                     cooler_W=cooler_rate(states[-1]["T"],charge),blower_W=power,
                     gas_flow_kg_s=float(faces[0,0]),delivered_W=qdel,
                     delivered_C=float(_interp_checked(hdel,H,grid))-273.15))
