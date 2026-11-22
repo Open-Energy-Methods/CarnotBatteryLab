@@ -77,5 +77,8 @@ def test_coupled_exergy_mass_energy_and_no_legacy_regression(use_loss,exergy_pro
             assert not x["allocation_is_complete"] and x["Carnot_battery_RTE"] is None
 
 def test_exergy_probe_reference_temperature_guard():
+    pytest.importorskip("numpy")
+    pytest.importorskip("scipy")
+    pytest.importorskip("CoolProp")
     from carnot_battery_lab.physics.closed_real_air_cycle import ClosedCycle,run_closed_cycle
     with pytest.raises(ValueError):run_closed_cycle(ClosedCycle(),exergy_environment_K=0.)
