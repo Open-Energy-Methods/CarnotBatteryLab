@@ -1,0 +1,58 @@
+name: m3-18-transcritical-hp
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/transcritical_hp_screen.py'
+      - 'scripts/run_m3_18_transcritical.py'
+      - 'tests/test_m3_18_transcritical.py'
+      - '.github/workflows/m3-18-transcritical-hp.yml'
+      - 'docs/methods/M3_18_TRANSCRITICAL_HP_INTERFACE.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_18_transcritical.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [OST_R600a,OST_mix5050,OST_mix6040,source80_R600a_process150,source80_R600_process150,source80_mix5050_process150,source80_R600a_charge195,source80_R600_charge195,source80_mix5050_charge195]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_18_transcritical.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m318-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m318-*
+          path: evidence
+      - run: python scripts/run_m3_18_transcritical.py --aggregate evidence --output results/m3_18_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m318-summary
+          path: results/m3_18_summary.json
+          if-no-files-found: error
