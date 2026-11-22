@@ -137,13 +137,15 @@ def process_water_split(h_out,h_in,h_target,demand_W,*,bypass=True):
     return m,0.,h_out,m*(h_out-h_in)
 
 
-def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None,cooler_control_K=None,recuperator=None,main_heat_loss=None):
+def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cycles=1,water_control_gain_kg_s_K=0.,process_duty_W=None,process_bypass=True,cooler_cap_W=None,trace_interval_s=None,cooler_control_K=None,recuperator=None,main_heat_loss=None,exergy_audit=False,exergy_environment_K=298.15):
     """Backward-compatible M3.10 baseline, with optional M3.11 routing.
 
     Valve K is an assumed loss per active bed port, identical in each
     direction. Instant switching is idealised; no valve motion/dead volume.
     Legacy top-level charge/discharge and balances refer to cycle one.
     """
+    if not isinstance(exergy_audit,bool) or (not math.isfinite(exergy_environment_K)) or not 280.<exergy_environment_K<350.:
+        raise ValueError("invalid exergy measurement configuration")
     if not isinstance(reverse_discharge,bool):
         raise ValueError("reverse_discharge must be boolean")
     if isinstance(valve_loss_K,bool) or not math.isfinite(valve_loss_K) or valve_loss_K<0:
@@ -218,6 +220,18 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         y0=np.r_[y0,a.initial_gas_K,0.,0.,0.]
     iq=ir+(4 if recuperator is not None else 0)
     if main_heat_loss is not None:y0=np.r_[y0,0.,0.,0.]
+    # M3.17 diagnostic ledgers appended after ALL legacy / optional states.
+    # Temperature and entropy are determined from the same properties as
+    # the energy model; no external compressor efficiency is inserted.
+    iex=iq+(3 if main_heat_loss is not None else 0)
+    if exergy_audit:
+        from CoolProp.CoolProp import PropsSI
+        from .exergy_audit import LEDGER_KEYS,close_exergy_ledger,finite_nonnegative_transport
+        Swater=np.array([PropsSI("Smass","T",float(t),"P",
+                        a.water_pressure_assumed_Pa,"HEOS::Water") for t in grid])
+        si=float(_interp_checked(hi,H,Swater))
+        def S_liquid(h):return _interp_checked(h,H,Swater)
+        y0=np.r_[y0,np.zeros(len(LEDGER_KEYS))]
     air=AbstractState("HEOS","Air")
     kh=(a.hx_assumed_friction*a.hx_length_m/a.hx_hydraulic_diameter_m+
         a.hx_total_minor_K)/nh
@@ -229,8 +243,10 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         T,P=air.T(),air.p()
         if not 280<T<800 or not 50_000<P<2e6:
             raise ValueError("closed loop EOS domain exceeded")
-        return dict(T=T,P=P,rho=air.rhomass(),h=air.hmass(),
+        d=dict(T=T,P=P,rho=air.rhomass(),h=air.hmass(),
                     mu=air.viscosity(),a=air.speed_sound())
+        if exergy_audit:d["s"]=air.smass()
+        return d
     def mixed_face(l,r):
         dp=l["P"]-r["P"]
         if abs(dp)<1e-7:return 0.,0.,0.
@@ -299,6 +315,31 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                 d[iw:il]-=qw/Cw
                 d[2*n-1]-=qg
                 d[iq:iq+3]=[sum(qr),sum(qw),qg]
+            if exergy_audit:
+                sg=finite_nonnegative_transport
+                smix=float(S_liquid(hd))
+                shx=float(S_liquid(float(hl[0])))
+                entropy_product=(mw+mb)*(smix-si)
+                entropy_hx=mw*(shx-si)
+                inter_r=float(np.sum(qgs*(1/ts-1/tg[:nb])))
+                inter_w=float(np.sum(qgw*(1/tw-1/tg[nb:-1])))
+                inter_l=float(np.sum(qwl*(1/tl-1/tw)))
+                cooler_ent=sg(qcool,tg[-1],c.cooler_sink_K)
+                heater_d=eheat-qheat*(1-exergy_environment_K/tg[-1])
+                mixing=entropy_product-entropy_hx
+                leak_ent=0.
+                if main_heat_loss is not None:
+                    leak_ent=(float(np.sum(qr*(1/amb-1/ts)))+
+                        float(np.sum(qw*(1/amb-1/tw)))+
+                        qg*(1/amb-1/tg[-1]))
+                buffer_ent=0.
+                if recuperator is not None:
+                    Tbuf=float(y[ir])
+                    buffer_ent=(sg(capture,tg[-1],Tbuf)+
+                        sg(release,Tbuf,tg[-1])+
+                        sg(loss,Tbuf,recuperator.ambient_K))
+                d[iex:iex+len(LEDGER_KEYS)]=[entropy_product,entropy_hx,inter_r,
+                    inter_w,inter_l,cooler_ent,heater_d,mixing,leak_ent,buffer_ent]
             return d
         return fun
     def stage(y_start,seconds,charge):
@@ -306,6 +347,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
             np.full(nb+nh,1e-6),np.full(nh,.001),np.full(14,.001)]
         if recuperator is not None:atol=np.r_[atol,1e-6,.001,.001,.001]
         if main_heat_loss is not None:atol=np.r_[atol,.001,.001,.001]
+        if exergy_audit:atol=np.r_[atol,np.full(len(LEDGER_KEYS),1e-4)]
         sol=solve_ivp(rhs(charge),(0,seconds),y_start,method="BDF",
             rtol=3e-7,atol=atol,
             max_step=c.max_step_s,first_step=min(1e-6,seconds),dense_output=True)
@@ -368,6 +410,48 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                 raise RuntimeError("process water mass balance violated")
             if abs(Qwater-(process_duty_W*seconds-deficit+excess))>.2:
                 raise RuntimeError("process duty ledger violated")
+        stage_exergy=None
+        if exergy_audit:
+            def system_entropy(q):
+                st=[decode(i,q) for i in range(n)]
+                gasS=sum(float(q[i])*st[i]["s"] for i in range(n))
+                rockS=Cs*float(np.sum(np.log(q[is_:iw]/exergy_environment_K)))
+                wallS=Cw*float(np.sum(np.log(q[iw:il]/exergy_environment_K)))
+                liquidS=Mw*float(np.sum(S_liquid(q[il:iz])))
+                bufferS=0. if recuperator is None else recuperator.capacity_J_K*math.log(float(q[ir])/exergy_environment_K)
+                return gasS+rockS+wallS+liquidS+bufferS
+            deltaS=system_entropy(y)-system_entropy(y_start)
+            entropy_ledgers=dict(zip(LEDGER_KEYS,map(float,ds[iex:iex+len(LEDGER_KEYS)])))
+            ent_sum=lambda key:entropy_ledgers[key]*exergy_environment_K
+            components={
+                "electric_heater_conversion":entropy_ledgers["heater_exergy_destroyed_J"],
+                "gas_to_rock":ent_sum("rock_gas_entropy_generated_J_K"),
+                "gas_to_HX_wall":ent_sum("wall_gas_entropy_generated_J_K"),
+                "wall_to_liquid":ent_sum("water_wall_entropy_generated_J_K"),
+                "gas_to_sink_cooler":ent_sum("cooler_entropy_generated_J_K"),
+                "process_bypass_mixing":ent_sum("bypass_mixing_entropy_generated_J_K"),
+                "main_ambient_heat_transfer":ent_sum("main_heat_leak_entropy_generated_J_K"),
+                "regenerator_internal_and_ambient_transfer":ent_sum("buffer_entropy_generated_J_K"),
+                "blower_motor_ambient_loss":Ebl-Wbl,
+            }
+            ambient=[]
+            if main_heat_loss is not None:ambient.append((main_loss,main_heat_loss.ambient_K))
+            if recuperator is not None:ambient.append((loss,recuperator.ambient_K))
+            stage_exergy=close_exergy_ledger(
+                T0_K=exergy_environment_K,
+                inventory_energy_change_J=Ug+Us+Uw+Hl+buffer_change,
+                inventory_entropy_change_J_K=deltaS,
+                heater_electric_J=Eheat,heater_to_gas_J=Qheat,
+                blower_electric_J=Ebl,blower_to_gas_J=Wbl,
+                process_heat_J=Qwater,
+                product_entropy_change_J_K=entropy_ledgers["product_entropy_out_J_K"],
+                cooler_heat_J=Qcool,cooler_sink_K=c.cooler_sink_K,
+                ambient_energy_by_temperature=ambient,
+                identified_components_J=components)
+            stage_exergy["integrated_diagnostic_entropy_ledgers"]=entropy_ledgers
+            stage_exergy["water_HX_branch_entropy_export_J_K"]=entropy_ledgers["hx_branch_entropy_out_J_K"]
+            stage_exergy["entropy_generation_nonnegative"]=stage_exergy["total_entropy_generation_J_K"]>=-1e-4
+            stage_exergy["unallocated_exergy_negative"]=stage_exergy["unresolved_gas_hydraulics_and_numerical_exergy_J"]<-max(10.,1e-5*stage_exergy["electric_input_exergy_J"])
         trace=None
         if trace_interval_s is not None:
             times=np.r_[np.arange(0.,seconds,trace_interval_s),seconds]
@@ -380,7 +464,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
                     cooler_W=cooler_rate(states[-1]["T"],charge),blower_W=power,
                     gas_flow_kg_s=float(faces[0,0]),delivered_W=qdel,
                     delivered_C=float(_interp_checked(hdel,H,grid))-273.15))
-        return y,dict(duration_s=seconds,phase_trace=trace,
+        return y,dict(duration_s=seconds,phase_trace=trace,exergy_audit=stage_exergy,
             main_rock_ambient_heat_J=rock_loss,main_wall_ambient_heat_J=wall_loss,
             main_return_ambient_heat_J=return_loss,main_ambient_heat_J=main_loss,
             recuperator_captured_J=capture,recuperator_returned_J=release,recuperator_ambient_loss_J=loss,
@@ -471,6 +555,7 @@ def run_closed_cycle(c:ClosedCycle,*,reverse_discharge=False,valve_loss_K=0.,cyc
         "cooler_cap_W":cooler_cap_W,"trace_interval_s":trace_interval_s,
         "cooler_control_K":cooler_control_K,"recuperator_assumptions":None if recuperator is None else asdict(recuperator),
         "main_heat_loss_assumptions":None if main_heat_loss is None else asdict(main_heat_loss),
+        "exergy_probe_enabled":exergy_audit,"exergy_environment_K":exergy_environment_K,
         "ideal_instantaneous_water_mixer":process_duty_W is not None and process_bypass,
         "water_flow_control_assumed_instantaneous":True,
         "instantaneous_ideal_valve_switch":True,
