@@ -81,7 +81,7 @@ def run(case):
         charge_heater_to_gas_J=ch["heater_thermal_to_gas_J"],
         direct_HP_gate=hp_gate,hypothetical_HP150_electric_boost_bound=bound,
         HP150_electric_boost_retrofit_qualified=False,
-        80C_source_compressor_map_validated=False,
+        source80_compressor_map_validated=False,
         heat_pump_storage_dynamic_coupling_demonstrated=False,
         external_HX_pressure_losses_assessed=False,
         Carnot_battery_RTE=None)
