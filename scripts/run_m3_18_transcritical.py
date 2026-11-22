@@ -39,7 +39,7 @@ def run(case):
         compressor_performance_calibrated=False,
         hardware_qualified=False,high_pressure_safety_qualified=False,
         experimental_operating_points_reproduced=False)
-    print(json.dumps({k:v for k,v in result.items() if k!="published_reference"},flush=True))
+    print(json.dumps({k:v for k,v in result.items() if k!="published_reference"}),flush=True)
     return result
 
 def aggregate(folder):
