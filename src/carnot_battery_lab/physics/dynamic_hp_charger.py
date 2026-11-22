@@ -58,12 +58,13 @@ class HPChargeInterface:
         maintains exactly the same total return-gas energy injection.
         This is dynamic demand sharing but the HP side is steady idealised.
         """
-        from CoolProp.CoolProp import PropsSI
-        if props is None:props=PropsSI
+        if props is None:
+            from CoolProp.CoolProp import PropsSI
+            props=PropsSI
         vals=(return_gas_T_K,return_gas_P_Pa,return_gas_h_J_kg,
               gas_mass_flow_kg_s,requested_gas_heating_W,resistance_heater_efficiency)
         if any(not math.isfinite(v) for v in vals) or min(
-                return_gas_T_K,return_gas_P_Pa,resistance_heater_efficiency)<=0 or max(
+                return_gas_T_K,return_gas_P_Pa,resistance_heater_efficiency)<=0 or min(
                 gas_mass_flow_kg_s,requested_gas_heating_W)<0 or not 0<resistance_heater_efficiency<=1.:
             raise ValueError("invalid TES heater state")
         qhp=0.
