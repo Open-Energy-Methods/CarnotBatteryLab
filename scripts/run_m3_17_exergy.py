@@ -6,10 +6,6 @@ attribution is implied. Cases run independently on CI matrix.
 import argparse,json,math
 from dataclasses import replace
 from pathlib import Path
-from carnot_battery_lab.physics.closed_real_air_cycle import ClosedCycle,run_closed_cycle
-from carnot_battery_lab.physics.industrial_bank import equivalent_bank,staggered_loads
-from carnot_battery_lab.physics.periodic_recovery import periodic_audit
-from carnot_battery_lab.physics.thermal_retention import MainHeatLoss
 
 # cells, max-step seconds, heater nameplate MW per bank, main UA W/K, cooler W
 CASES={
@@ -24,6 +20,11 @@ CASES={
 }
 
 def run_case(case):
+    # Aggregate mode must remain usable without NumPy/CoolProp/Scipy.
+    from carnot_battery_lab.physics.closed_real_air_cycle import ClosedCycle,run_closed_cycle
+    from carnot_battery_lab.physics.industrial_bank import equivalent_bank,staggered_loads
+    from carnot_battery_lab.physics.periodic_recovery import periodic_audit
+    from carnot_battery_lab.physics.thermal_retention import MainHeatLoss
     cells,step,heater,UA,cooler=CASES[case]
     base=ClosedCycle()
     base=replace(base,discharge_s=600.,max_step_s=step,
