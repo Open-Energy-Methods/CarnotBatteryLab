@@ -174,6 +174,15 @@ def screen_envelope(e:ServiceEnvelope,refrigerant,*,low_dew_count=4,high_pressur
     """Discover, not optimise, a reproducible low/high pressure grid."""
     from CoolProp.CoolProp import PropsSI
     fluid,meta=refrigerant_id(refrigerant)
+    # Analytical impossibility: heat cannot flow across the hot-end pinch
+    # when the allowed compressor discharge is colder than the required sink.
+    # Check this BEFORE EOS searching; no compressor map can waive the limit.
+    if e.sink_out_C+e.approach_min_K>e.compressor_discharge_temperature_limit_C:
+        return dict(status="REJECTED_BY_HOT_END_RATING",fluid=meta,
+            assumptions=asdict(e),attempts=0,accepted_points=0,
+            rejections={"compressor_discharge_below_required_sink_hot_end":1},
+            best=None,experimental_validation=False,
+            thermodynamic_rating_gate_only=True)
     attempts=accepted=0
     failures={}
     selected=None
