@@ -89,13 +89,32 @@ class HPChargeInterface:
                 if min(dh_hot,dh_source,dh_gas)<0:
                     raise ValueError("invalid real-fluid enthalpy ordering")
                 source_fraction=1.-1./self.COP_electric_assumed
+                # Constant-heat-capacity *secant* approximation for
+                # preliminary counterflow NTU, anchored to real-fluid h(T).
+                # Design hot-water flow is held at maximum when HP runs.
+                # Do not treat this as validated exchanger sizing.
+                dT=hot_K-return_gas_T_K
+                cg=gas_mass_flow_kg_s*dh_gas/(gas_limit_K-return_gas_T_K)
+                cw=self.hot_water_max_flow_kg_s*dh_hot/(hot_K-return_min_K)
+                cmin=min(cg,cw);cmax=max(cg,cw)
+                if cmin>0:
+                    cr=cmin/cmax
+                    ntu=self.gas_UA_W_K/cmin
+                    if abs(cr-1.)<1e-9:
+                        effectiveness=ntu/(1.+ntu)
+                    else:
+                        z=math.exp(-ntu*(1.-cr))
+                        effectiveness=(1.-z)/(1.-cr*z)
+                    q_ntu=effectiveness*cmin*dT
+                else:q_ntu=0.
                 qhp=min(requested_gas_heating_W,self.hp_thermal_nameplate_W,
-                    self.gas_UA_W_K*(gas_limit_K-return_gas_T_K),
-                    gas_mass_flow_kg_s*dh_gas,
+                    q_ntu,gas_mass_flow_kg_s*dh_gas,
                     self.hot_water_max_flow_kg_s*dh_hot,
                     self.source_water_max_flow_kg_s*dh_source/source_fraction)
                 qhp=max(0.,qhp)
-                hot_flow=qhp/dh_hot if dh_hot>0 else 0.
+                # Pump the designated water flow while producing HP heat,
+                # rather than assuming a lower flow but the full-flow UA.
+                hot_flow=self.hot_water_max_flow_kg_s if qhp>0 else 0.
                 source_flow=qhp*source_fraction/dh_source if dh_source>0 else 0.
         compressor=qhp/self.COP_electric_assumed
         source=qhp-compressor
