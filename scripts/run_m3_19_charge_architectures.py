@@ -86,7 +86,7 @@ def run(case):
         external_HX_pressure_losses_assessed=False,
         Carnot_battery_RTE=None)
     print(json.dumps(dict(case=case,full=full,periodic=periodic,mean_electric_W=z["mean_modeled_electric_W"],
-        upper_HP_fraction=bound["upper_bound_HP_fraction"],conditional_saving_J=bound["conditional_upper_bound_electric_saving_J"]),flush=True))
+        upper_HP_fraction=bound["upper_bound_HP_fraction"],conditional_saving_J=bound["conditional_upper_bound_electric_saving_J"])),flush=True)
     return dict(summary=summary,periodic_audit=audit,assumptions=v["assumptions"])
 
 def aggregate(root):
