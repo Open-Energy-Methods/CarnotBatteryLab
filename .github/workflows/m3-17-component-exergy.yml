@@ -1,0 +1,59 @@
+name: m3-17-component-exergy
+on:
+  pull_request:
+    paths:
+      - 'src/carnot_battery_lab/physics/exergy_audit.py'
+      - 'src/carnot_battery_lab/physics/closed_real_air_cycle.py'
+      - 'tests/test_m3_17_exergy.py'
+      - 'scripts/run_m3_17_exergy.py'
+      - '.github/workflows/m3-17-component-exergy.yml'
+      - 'docs/methods/M3_17_COMPONENT_EXERGY.md'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python -m pytest tests/test_m3_17_exergy.py tests/test_m3_16b_refinement.py tests/test_m3_16_thermal_retention.py tests/test_m3_15_industrial_bank.py tests/test_m3_13_matched_duty.py -q
+  case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [h3_adia_n16,h5_adia_n16,h3_loss100_n16,h3_loss500_n16,h3_loss1000_n16,h3_loss500_n12,h3_loss500_halfstep,h3_cooler1MW_n16]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[physics,test]"
+      - run: python scripts/run_m3_17_exergy.py --case ${{ matrix.case }} --output results/case_${{ matrix.case }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m317-${{ matrix.case }}
+          path: results/case_${{ matrix.case }}.json
+          if-no-files-found: error
+  aggregate:
+    needs: [unit,case]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[test]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: m317-*
+          path: evidence
+      - run: python scripts/run_m3_17_exergy.py --aggregate evidence --output results/m3_17_summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m317-summary
+          path: results/m3_17_summary.json
+          if-no-files-found: error
