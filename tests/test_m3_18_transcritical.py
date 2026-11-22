@@ -41,7 +41,7 @@ def test_binary_mix_mass_to_molar_conversion():
     a,meta=refrigerant_id("R290_R601a_60_40")
     assert meta["mass_fraction_propane"]==.6
     assert .6<meta["mole_fraction_propane"]<1.
-    assert "IsoPentane" in a
+    assert "Isopentane" in a
     with pytest.raises(ValueError):refrigerant_id("R718")
 
 @pytest.mark.parametrize("source,sink",[((100.,70.),(100.,150.)),((80.,60.),(110.,150.))])
